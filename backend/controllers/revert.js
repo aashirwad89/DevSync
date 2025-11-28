@@ -1,3 +1,4 @@
-export function revertRepo(){
-    console.log("revert command is running");
+async function revertRepo(){
+    console.log("revert is running");
 }
+module.exports = {revertRepo};

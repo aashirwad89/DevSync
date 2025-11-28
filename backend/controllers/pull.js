@@ -1,3 +1,4 @@
-export function pullRepo(){
-    console.log("Pull command is running also")
+async function pullRepo() {
+    console.log("pull is running")
 }
+module.exports = {pullRepo}

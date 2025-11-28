@@ -1,3 +1,4 @@
-export function pushRepo(){
-    console.log("push command is also running");
+async function pushRepo(){
+    console.log("push is running");
 }
+module.exports = {pushRepo};

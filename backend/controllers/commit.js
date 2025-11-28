@@ -1,3 +1,4 @@
-export function commitRepi(){
-    console.log("commit ki command ki chal rhi hai");
+async function commitRepo(){
+    console.log("commit is running")
 }
+module.exports = {commitRepo}

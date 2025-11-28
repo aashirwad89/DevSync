@@ -1,3 +1,23 @@
-export function initRepo() {
-    console.log("Init chal rha hai");
+const fs = require("fs").promises;
+const path = require("path");
+
+async function initRepo() {
+  const repoPath = path.resolve(process.cwd(), ".devgit");
+  const commitPath = path.resolve(path.join(repoPath, "commits"));
+
+  try {
+    await fs.mkdir(repoPath, { recursive: true });
+    await fs.mkdir(commitPath, { recursive: true });
+
+    await fs.writeFile(
+      path.join(repoPath, "config.json"),
+      JSON.stringify({ bucket: process.env.S3_BUCKET })
+    );
+
+    console.log("repository initialised");
+  } catch (err) {
+    console.log("Error in initialising:", err);
+  }
 }
+
+module.exports = { initRepo };
