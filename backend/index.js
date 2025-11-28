@@ -39,7 +39,7 @@ yargs(hideBin(process.argv))
         type: "string",
       });
     },
-    commitRepo
+    commitRepo(argv.message)
   )
   .command(
     "push",

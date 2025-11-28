@@ -11,6 +11,7 @@
   "author": "Aashirwad Singh",
   "license": "ISC",
   "dependencies": {
+    "uuid": "^13.0.0",
     "yargs": "^18.0.0"
   }
 }
