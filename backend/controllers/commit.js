@@ -1,31 +1,39 @@
-const fs = require('fs').promises;
+const fs = require("fs").promises;
 const path = require("path");
-const { v4:uuidv4 } = require("uuid");
+const { v4: uuidv4 } = require("uuid");
+const supabase = require("../supabase"); // <-- use here
 
+async function commitRepo(message) {
+  const repoPath = path.resolve(process.cwd(), ".devgit");
+  const stagedPath = path.join(repoPath, "staging");
 
-async function commitRepo(message){
-    const repoPath = path.resolve(process.cwd(), ".devgit");
-    const stagedPath = path.join(repoPath, "staging");
+  try {
+    const commitID = uuidv4();
 
-    const commitPath = path.join(repoPath, "commit");
+    const files = await fs.readdir(stagedPath);
 
+    for (const file of files) {
+      const fileBuffer = await fs.readFile(path.join(stagedPath, file));
 
-    try{
-const commitID =  uuidv4();
-const commitDir = path.join(commitPath, commitID);
-await fs.mkdir(commitDir, {recursive:true});
-
-const files = await fs.readdir(stagedPath);
-
-for(const file of files){
-    await fs.copyFile(path.join(stagedPath, file),  path.join(commitDir, file))
-}
-
-await fs.writeFile(path.join(commitDir, "commit.json"), JSON.stringify({message, date:new Date().toISOString()}));
-
-console.log(`Commit ${commitID} created with message : ${message}`)
-    }catch(err){
-        console.log("Error in commiting files", err);
+      await supabase.storage
+        .from("commits")
+        .upload(`${commitID}/${file}`, fileBuffer, {
+          contentType: "application/octet-stream",
+          upsert: true,
+        });
     }
+
+    await supabase.from("commits").insert([
+      {
+        commit_id: commitID,
+        message,
+      },
+    ]);
+
+    console.log(`✅ Commit ${commitID} created`);
+  } catch (err) {
+    console.log("Error committing files:", err);
+  }
 }
-module.exports = {commitRepo}
+
+module.exports = { commitRepo };

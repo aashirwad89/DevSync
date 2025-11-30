@@ -2,6 +2,8 @@
 
 const yargs = require("yargs");
 const { hideBin } = require("yargs/helpers");
+require('dotenv').config();
+
 
 const { initRepo } = require("./controllers/init");
 const { addRepo } = require("./controllers/add");
@@ -9,6 +11,8 @@ const { commitRepo } = require("./controllers/commit");
 const { pushRepo } = require("./controllers/push");
 const { pullRepo } = require("./controllers/pull");
 const { revertRepo } = require("./controllers/revert");
+
+
 
 yargs(hideBin(process.argv))
   .command(
@@ -47,7 +51,9 @@ yargs(hideBin(process.argv))
     "push",
     "Push commits to S3",
     {},
-    pushRepo
+    (argv)=>{
+      pushRepo(argv.file)
+    }
   )
   .command(
     "pull",
