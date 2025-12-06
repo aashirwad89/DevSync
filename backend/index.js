@@ -11,6 +11,8 @@ const { commitRepo } = require("./controllers/commit");
 const { pushRepo } = require("./controllers/push");
 const { pullRepo } = require("./controllers/pull");
 const { revertRepo } = require("./controllers/revert");
+const { listCommits } = require("./controllers/list");
+
 
 
 
@@ -59,7 +61,9 @@ yargs(hideBin(process.argv))
     "pull",
     "Pull commits from S3",
     {},
-    pullRepo
+    (argv)=> {
+      pullRepo(argv.file);
+    }
   )
   .command(
     "revert <commitID>",
@@ -70,7 +74,17 @@ yargs(hideBin(process.argv))
         type: "string",
       });
     },
-    revertRepo
+    (argv)=>{
+      revertRepo(argv.commitID)
+    }
   )
+  .command(
+  "list",
+  "List all available commits",
+  {},
+  () => {
+    listCommits();
+  }
+)
   .demandCommand(1, "You need at least one command")
   .help().argv;
