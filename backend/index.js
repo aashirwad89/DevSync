@@ -121,7 +121,7 @@ yargs(hideBin(process.argv))
   });
 
    app.use(cors({origin: "*"}));
-   app.use(mainRouter);
+   app.use("/",mainRouter);
 
    const httpServer = http.createServer(app); 
    const io = new Server(httpServer, {
