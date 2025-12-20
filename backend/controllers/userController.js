@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ReturnDocument } = require("mongodb");
 const dotenv = require("dotenv");
 const ObjectId = require("mongodb").ObjectId;
 
@@ -119,21 +119,74 @@ const user = await userCollection.findOne({
 });
 
 if(!user){
-  return res.status(400).json({message:"Not found the user profile"})
-}
+  return res.status(404).json({message:"Not found the user profile"})
+  }
+
+res.send(user, {message:"Profile fetched"});
   }catch(e){
     console.log("error in get user profile", e);
     res.status(500).send("server error")
   }
-  res.send("User profile");
+  
 };
 
 const updateUserProfile = async (req, res) => {
-  res.send("Profile updated");
+  const currentId = req.params.id;
+  const {email , password} = req.body;
+  
+  try{
+
+await connectClient();
+const db = client.db("devsync");
+const userCollection  = db.collection("users");
+
+let updatedField = {email};
+
+if(password){
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+   updatedField.password = hashedPassword;
+}
+
+const result = await userCollection.findOneAndUpdate({
+  _id: new ObjectId(currentId),
+}, {$set: updatedField},
+{ReturnDocument:"after"}
+);
+
+if(!result.value){
+return res.status(404).json({message:"User not found"});
+}
+
+res.send(result.value);
+  }catch(err){
+    console.log("error in updating the user", err);
+    res.status(500).send("Server error")
+  }
 };
 
 const deleteUserProfile = async (req, res) => {
-  res.send("Profile deleted");
+  const currentId = req.params.id;
+
+  try{
+ await connectClient();
+  const db = client.db("devsync");
+  const userCollection = db.collection("users");
+
+  const result = await userCollection.deleteOne({
+    _id: new ObjectId(currentId),
+  })
+
+  if(!result.deleteCount == 0){
+    return res.status(404).json({message: "User not found"})
+  }
+  res.json({message: "User profile deleted"});
+
+
+  }catch(err){
+    console.log("Error in deleting profile", err);
+    res.status(500).send("Server error");
+  }
 };
 
 module.exports = {

@@ -1,32 +1,35 @@
-const createRepo = (req, res)=>{
-    res.send("Repo is created");
+const mongoose = require('mongoose');
+const Repository = require('../models/repoModel')
+
+const createRepo = async (req, res)=>{
+    res.send("Repo is created")
 }
 
-const getAllrepositary = (req, res)=>{
+const getAllrepositary = async (req, res)=>{
     res.send("All repo gotted");
 }
 
-const fetchrepositaryById = (req, res)=>{
+const fetchrepositaryById = async (req, res)=>{
     res.send("All repos fetched by Id");
 }
 
-const fetchrepositaryByName = (req, res)=>{
+const fetchrepositaryByName = async (req, res)=>{
     res.send("All repo fetched by name");
 }
 
-const fetchrepositaryForCurrentUser = (req, res)=>{
+const fetchrepositaryForCurrentUser = async (req, res)=>{
     res.send("All repo fetched for current user");
 }
 
-const updaterepositaryById = (req, res)=>{
+const updaterepositaryById = async (req, res)=>{
     res.send("All repo update by Id");
 }
 
-const toggleVisiblityById = (req, res)=>{
+const toggleVisiblityById = async (req, res)=>{
     res.send("Toggle visible by ID");
 }
 
-const deleterepositaryById = (req, res)=>{
+const deleterepositaryById = async (req, res)=>{
     res.send("All repo got deleted by ID");
 }
 
