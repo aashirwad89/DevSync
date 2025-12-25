@@ -23,4 +23,4 @@ repositary:{
 })
 
 const Issue = mongoose.model("Issue", IssueSchema);
-export default Issue;
+module.exports = Issue;

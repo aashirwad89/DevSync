@@ -1,12 +1,46 @@
 const mongoose = require('mongoose');
 const Repository = require('../models/repoModel')
+const User =    require('../models/userModel');
+const Issue = require('../models/issueModel');
 
 const createRepo = async (req, res)=>{
-    res.send("Repo is created")
+    const { owner , name , issues , content , description , visiblity} = req.body;
+    try{
+if(!name){
+    return res.status(400).json({message : "Repositary name is required"})
+}
+if(!mongoose.Types.ObjectId.isValid(owner)){
+return res.status(400).json({message: "Invalid User ID"})
+}
+const newRepo = new Repository({
+    name, 
+    description,
+     visiblity, 
+     owner, 
+     content,
+    issues
+})
+const result = await newRepo.save();
+res.status(201).json({
+    message:"Repositary created!", 
+    repositaryId:result._id,
+})
+    }catch(err){
+        console.log("Create repo error", err);
+        res.status(500).send("Server error");
+    }
 }
 
 const getAllrepositary = async (req, res)=>{
-    res.send("All repo gotted");
+    try{
+const repos = await Repository.find({}).populate;
+
+
+
+    }catch(err){
+        console.log("Error in get all repo", err);
+        res.statuc(500).send("Server error")
+    }
 }
 
 const fetchrepositaryById = async (req, res)=>{
