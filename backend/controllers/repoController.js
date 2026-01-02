@@ -33,22 +33,34 @@ res.status(201).json({
 
 const getAllrepositary = async (req, res)=>{
     try{
-const repos = await Repository.find({}).populate;
-
-
-
+const repos = await Repository.find({}).populate("owner").populate("issues");
+res.json(repos);
     }catch(err){
         console.log("Error in get all repo", err);
-        res.statuc(500).send("Server error")
+        res.status(500).send("Server error")
     }
 }
 
 const fetchrepositaryById = async (req, res)=>{
-    res.send("All repos fetched by Id");
+    const repoID = req.params.id;
+    try{
+const repositary = Repository.find({_id:repoID}).populate("owner").populate("issues").toArray();
+res.json(repositary);
+    }catch(err){
+        console.log("Error in fetching repo by id", err);
+        res.status(500).send("Server error");
+    }
 }
 
 const fetchrepositaryByName = async (req, res)=>{
-    res.send("All repo fetched by name");
+   const {repoName} = req.params.name;
+    try{
+const repositary = Repository.find({name:repoName}).populate("owner").populate("issues")
+res.json(repositary);
+    }catch(err){
+        console.log("Error in fetching repo by id", err);
+        res.status(500).send("Server error");
+    }
 }
 
 const fetchrepositaryForCurrentUser = async (req, res)=>{
