@@ -111,7 +111,7 @@ const updaterepositaryById = async (req, res)=>{
     const {content , description} = req.body;
 
     try{
-const repositary = await Repository.findById(id);
+const repositary = await Repository.findByIdAndUpdate(id);
 if(!repositary){
     return res.status(404).json({error: "repo is nt found"})
 }
@@ -157,7 +157,19 @@ re.json({
 }
 
 const deleterepositaryById = async (req, res)=>{
-    res.send("All repo got deleted by ID");
+  const {id} = req.params;
+  try{
+const repositary = await Repository.findByIdAndDelete(id);
+if(!repositary){
+  return res.status(404).json({error: "Repositary not found"})
+}
+
+res.json({message: "Repositary Deleted"});
+
+  }catch(err){
+    console.log("Error in delete repo", err);
+    res.status(500).json("Server Error");
+  }
 }
 
 module.exports = {
