@@ -140,20 +140,21 @@ function Landing() {
                 ))}
               </div>
               <div className="flex items-center gap-8 text-sm font-mono uppercase tracking-wider text-gray-400">
-                <a href="#features" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
+                <a href="/features" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
                   <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
                   Features
                 </a>
-                <a href="#pricing" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
+                <a href="/pricing" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
                   <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
                   Pricing
                 </a>
-                <a href="#docs" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
+                <a href="/documents" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
                   <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
                   Docs
                 </a>
               </div>
               <motion.button
+              onClick={()=> window.location.href= "/login"}
                 whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(16, 185, 129, 0.6)' }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-black rounded-2xl hover:from-emerald-400 hover:to-teal-500 transition-all duration-300 shadow-xl shadow-emerald-500/30 border border-emerald-400 font-mono uppercase tracking-widest text-sm"
@@ -199,9 +200,9 @@ function Landing() {
                     ))}
                   </div>
                   <div className="flex flex-col items-center gap-3 text-sm font-mono text-gray-400">
-                    <a href="#features" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Features</a>
-                    <a href="#pricing" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Pricing</a>
-                    <a href="#docs" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Docs</a>
+                    <a href="/features" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Features</a>
+                    <a href="/pricing" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Pricing</a>
+                    <a href="/documents" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Docs</a>
                   </div>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
