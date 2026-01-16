@@ -9,7 +9,8 @@ import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'fra
 import { 
   FiGitBranch, FiGitCommit, FiGitPullRequest, FiTerminal, FiZap, FiActivity,
   FiUsers, FiShield, FiCode, FiArrowRight, FiCpu, FiDatabase, FiLock, FiCommand,
-  FiCheckCircle, FiStar, FiGithub, FiTwitter, FiLinkedin, FiMail, FiMenu, FiX
+  FiCheckCircle, FiStar, FiGithub, FiTwitter, FiLinkedin, FiMail, FiMenu, FiX,
+  FiClock, FiTrendingUp, FiBox, FiLayers
 } from 'react-icons/fi'
 
 const ClientOnly = ({ children }: { children: React.ReactNode }) => {
@@ -20,17 +21,9 @@ const ClientOnly = ({ children }: { children: React.ReactNode }) => {
 }
 
 function Landing() {
-  const [currentChapter, setCurrentChapter] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const heroRef = useRef(null)
-  
-  const chapters = [
-    { title: "The Problem", subtitle: "GitHub is slow. GitLab is bloated.", story: "Developers waste 3+ hours every week waiting for pushes, pulls, and merges.", cta: "There had to be a better way..." },
-    { title: "The Breakthrough", subtitle: "We rebuilt Git from the ground up.", story: "Distributed edge network. <50ms latency. Zero-knowledge encryption.", cta: "Engineers started noticing..." },
-    { title: "The Migration", subtitle: "150K+ developers switched in 6 months.", story: "Stripe cut CI/CD times by 70%. Shopify automated their pipeline.", cta: "The revolution had begun." },
-    { title: "Your Turn", subtitle: "Join the fastest Git platform.", story: "Push code in 60 seconds. Scale to infinity.", cta: "Ready to ship faster?" }
-  ]
 
   useEffect(() => {
     setMounted(true)
@@ -40,75 +33,64 @@ function Landing() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-emerald-400 font-mono text-xl animate-pulse">Loading story...</div>
+        <div className="text-emerald-400 font-mono text-xl animate-pulse">Loading...</div>
       </div>
     )
   }
 
-  const StoryChapter = ({ chapter, index }: { chapter: any, index: number }) => (
-    <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.8, delay: index * 0.2 }} className="text-center mb-20">
-      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} 
-        transition={{ duration: 0.5 }} 
-        className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-500/10 rounded-full border-2 border-emerald-500/30 mb-8 backdrop-blur-sm">
-        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-        <span className="text-sm font-mono text-emerald-400 uppercase tracking-wider">Chapter {index + 1}</span>
-      </motion.div>
-      
-      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} 
-        transition={{ duration: 0.8 }} 
-        className="text-7xl lg:text-8xl xl:text-9xl font-black text-white mb-6 leading-tight tracking-tight font-mono">
-        {chapter.title}
-      </motion.h1>
-      
-      <motion.p initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} 
-        transition={{ duration: 0.8, delay: 0.2 }} 
-        className="text-2xl lg:text-3xl text-emerald-400 mb-8 font-mono uppercase tracking-widest font-black">
-        {chapter.subtitle}
-      </motion.p>
-      
-      <motion.p initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} 
-        transition={{ duration: 0.8, delay: 0.4 }} 
-        className="text-xl lg:text-2xl text-gray-400 max-w-4xl mx-auto mb-12 leading-relaxed font-mono">
-        {chapter.story}
-      </motion.p>
-      
-      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} 
-        transition={{ duration: 0.6, delay: 0.6 }} 
-        className="text-4xl font-mono text-emerald-400 mb-4 opacity-75">
-        {chapter.cta}
-      </motion.div>
+  const FeatureCard = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
+    <motion.div
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="group bg-gradient-to-b from-gray-950/50 to-black/50 backdrop-blur-xl rounded-2xl p-8 border border-emerald-500/20 hover:border-emerald-500/40 transition-all"
+    >
+      <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/30">
+        <Icon className="w-7 h-7 text-black" />
+      </div>
+      <h3 className="text-xl font-bold text-white mb-3 font-mono">{title}</h3>
+      <p className="text-gray-400 leading-relaxed text-sm">{description}</p>
     </motion.div>
   )
 
-  const StatCard = ({ value, label }: { value: string, label: string }) => (
-    <motion.div whileHover={{ y: -10, scale: 1.05 }} 
-      className="bg-gradient-to-b from-gray-950/50 to-black/50 backdrop-blur-xl rounded-3xl p-10 border border-red-500/20 hover:border-red-500/40 transition-all">
-      <div className="text-4xl mb-4 text-red-400">
-        <FiUsers className="w-12 h-12 inline" />
+  const StatCard = ({ value, label, icon: Icon }: { value: string, label: string, icon: any }) => (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="text-center p-6"
+    >
+      <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-500/10 rounded-xl mb-4">
+        <Icon className="w-6 h-6 text-emerald-400" />
       </div>
-      <div className="text-5xl font-black text-white mb-2 font-mono">{value}</div>
-      <div className="text-gray-500 uppercase tracking-widest font-mono text-sm">{label}</div>
+      <div className="text-4xl font-black text-white mb-2 font-mono">{value}</div>
+      <div className="text-gray-500 uppercase tracking-wider font-mono text-xs">{label}</div>
     </motion.div>
   )
 
-  const TechCard = ({ label }: { label: string }) => (
-    <motion.div whileHover={{ scale: 1.1, boxShadow: '0 0 40px rgba(16, 185, 129, 0.4)' }} 
-      className="group p-8 rounded-2xl border border-emerald-500/20 hover:border-emerald-500/40 transition-all bg-gradient-to-br from-gray-950/50 to-black/50 backdrop-blur-xl">
-      <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-2xl">
-        <FiCpu className="w-10 h-10 text-black" />
+  const TestimonialCard = ({ name, company, quote, role }: { name: string, company: string, quote: string, role: string }) => (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="bg-gradient-to-br from-gray-950/70 to-black/50 backdrop-blur-xl rounded-2xl p-8 border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
+    >
+      <div className="flex gap-1 mb-4">
+        {[...Array(5)].map((_, i) => <FiStar key={i} className="w-4 h-4 text-emerald-400 fill-emerald-400" />)}
       </div>
-      <h3 className="text-2xl font-black text-white mb-2 font-mono">{label}</h3>
+      <p className="text-gray-300 mb-6 leading-relaxed">&quot;{quote}&quot;</p>
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center">
+          <span className="font-bold text-black text-lg">{name.charAt(0)}</span>
+        </div>
+        <div>
+          <div className="text-white font-bold">{name}</div>
+          <div className="text-emerald-400 text-sm font-mono">{role} @ {company}</div>
+        </div>
+      </div>
     </motion.div>
   )
 
   return (
     <div className="min-h-screen bg-black text-gray-100 overflow-x-hidden">
-      {/* 🔥 ENHANCED NAVBAR */}
+      {/* NAVBAR */}
       <nav className="fixed top-0 w-full z-50 backdrop-blur-3xl bg-black/95 border-b border-emerald-500/40 shadow-2xl shadow-emerald-500/10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo */}
             <motion.div whileHover={{ scale: 1.05 }} className="flex items-center gap-3 group">
               <div className="relative p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl shadow-emerald-500/30 group-hover:shadow-2xl group-hover:shadow-emerald-500/50 transition-all duration-300">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition-opacity" />
@@ -122,39 +104,21 @@ function Landing() {
               </div>
             </motion.div>
 
-            {/* Desktop Menu */}
-            <div className="hidden lg:flex items-center gap-12">
-              <div className="flex items-center gap-1">
-                {chapters.map((_, i) => (
-                  <motion.button
-                    key={i}
-                    onClick={() => setCurrentChapter(i)}
-                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                      currentChapter === i
-                        ? 'bg-emerald-500 scale-150 shadow-lg shadow-emerald-500/50'
-                        : 'bg-emerald-500/40 hover:bg-emerald-500/70 hover:scale-125'
-                    }`}
-                    whileHover={{ scale: 1.4 }}
-                    whileTap={{ scale: 0.95 }}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-8 text-sm font-mono uppercase tracking-wider text-gray-400">
-                <a href="/features" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
-                  <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
-                  Features
-                </a>
-                <a href="/pricing" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
-                  <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
-                  Pricing
-                </a>
-                <a href="/documents" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
-                  <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
-                  Docs
-                </a>
-              </div>
+            <div className="hidden lg:flex items-center gap-8 text-sm font-mono uppercase tracking-wider text-gray-400">
+              <a href="/features" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
+                <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
+                Features
+              </a>
+              <a href="/pricing" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
+                <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
+                Pricing
+              </a>
+              <a href="/documents" className="hover:text-emerald-400 transition-all duration-300 flex items-center gap-1 group">
+                <span className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">$</span>
+                Docs
+              </a>
               <motion.button
-              onClick={()=> window.location.href= "/login"}
+                onClick={() => window.location.href = "/login"}
                 whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(16, 185, 129, 0.6)' }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-black rounded-2xl hover:from-emerald-400 hover:to-teal-500 transition-all duration-300 shadow-xl shadow-emerald-500/30 border border-emerald-400 font-mono uppercase tracking-widest text-sm"
@@ -163,7 +127,6 @@ function Landing() {
               </motion.button>
             </div>
 
-            {/* Mobile Menu Button */}
             <motion.button
               className="lg:hidden p-2 rounded-xl border border-emerald-500/50 hover:bg-emerald-500/10 transition-all"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -173,7 +136,6 @@ function Landing() {
             </motion.button>
           </div>
 
-          {/* Mobile Menu */}
           <AnimatePresence>
             {mobileMenuOpen && (
               <motion.div
@@ -184,27 +146,13 @@ function Landing() {
                 className="lg:hidden pb-4 border-t border-emerald-500/20"
               >
                 <div className="flex flex-col items-center gap-4 pt-4">
-                  <div className="flex items-center gap-2">
-                    {chapters.map((_, i) => (
-                      <motion.button
-                        key={i}
-                        onClick={() => {
-                          setCurrentChapter(i)
-                          setMobileMenuOpen(false)
-                        }}
-                        className={`w-3 h-3 rounded-full transition-all ${
-                          currentChapter === i ? 'bg-emerald-500 scale-125' : 'bg-emerald-500/50'
-                        }`}
-                        whileTap={{ scale: 0.9 }}
-                      />
-                    ))}
-                  </div>
                   <div className="flex flex-col items-center gap-3 text-sm font-mono text-gray-400">
                     <a href="/features" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Features</a>
                     <a href="/pricing" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Pricing</a>
                     <a href="/documents" className="hover:text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">Docs</a>
                   </div>
                   <motion.button
+                    onClick={() => window.location.href = "/login"}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-black rounded-2xl hover:from-emerald-400 hover:to-teal-500 transition-all shadow-xl font-mono uppercase tracking-wider text-sm"
@@ -235,128 +183,266 @@ function Landing() {
         </div>
       </ClientOnly>
 
-      {/* STORY SECTIONS - SAME AS BEFORE */}
-      <section className="min-h-screen flex items-center justify-center py-32 px-4 relative pt-24">
+      {/* HERO SECTION */}
+      <section ref={heroRef} className="min-h-screen flex items-center justify-center py-32 px-4 relative pt-32">
         <div className="max-w-7xl mx-auto text-center">
-          <StoryChapter chapter={chapters[0]} index={0} />
-          <ClientOnly>
-            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} 
-              transition={{ duration: 0.8, delay: 1 }} className="max-w-6xl mx-auto mt-20">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <StatCard value="3+ hrs" label="Lost weekly per dev" />
-                <StatCard value="20+ min" label="Monorepo clones" />
-                <StatCard value="47%" label="Pipeline failures" />
-              </div>
-            </motion.div>
-          </ClientOnly>
-        </div>
-      </section>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/30 mb-8 backdrop-blur-sm"
+          >
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-sm font-mono text-emerald-400 uppercase tracking-wider">Enterprise Git Platform</span>
+          </motion.div>
 
-      <section className="min-h-screen flex items-center justify-center py-32 px-4 bg-gradient-to-b from-transparent to-emerald-950/30 relative pt-24">
-        <div className="max-w-7xl mx-auto text-center">
-          <StoryChapter chapter={chapters[1]} index={1} />
-          <ClientOnly>
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} 
-              transition={{ duration: 0.8, delay: 1.2 }} className="max-w-6xl mx-auto mt-20 grid grid-cols-2 lg:grid-cols-4 gap-8">
-              <TechCard label="Edge CDN" />
-              <TechCard label="Zero-Knowledge" />
-              <TechCard label="<50ms Latency" />
-              <TechCard label="SOC 2 Type II" />
-            </motion.div>
-          </ClientOnly>
-        </div>
-      </section>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-6 leading-tight tracking-tight"
+          >
+            Ship Code at
+            <span className="block bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 bg-clip-text text-transparent">
+              Lightning Speed
+            </span>
+          </motion.h1>
 
-      <section className="min-h-screen flex items-center justify-center py-32 px-4 relative pt-24">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <StoryChapter chapter={chapters[2]} index={2} />
-            <ClientOnly>
-              <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} 
-                transition={{ duration: 0.8, delay: 1.4 }} className="space-y-8">
-                {[
-                  { name: "Alex Chen", company: "Stripe", stat: "CI/CD 70% faster", color: "from-rose-500 to-pink-500" },
-                  { name: "Sarah M.", company: "Shopify", stat: "Full automation", color: "from-emerald-500 to-teal-600" },
-                  { name: "James P.", company: "Datadog", stat: "SOC 2 overnight", color: "from-blue-500 to-indigo-600" }
-                ].map((testimonial, i) => (
-                  <motion.div key={i} whileHover={{ y: -10, scale: 1.02 }} 
-                    className="group bg-gradient-to-r from-gray-950/70 to-black/50 backdrop-blur-xl rounded-3xl p-10 border border-emerald-500/20 hover:border-emerald-500/40 transition-all">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className={`w-16 h-16 bg-gradient-to-br ${testimonial.color} rounded-2xl flex items-center justify-center shadow-2xl`}>
-                        <span className="font-black text-xl text-black">{testimonial.name.charAt(0)}</span>
-                      </div>
-                      <div>
-                        <div className="text-xl font-black text-white font-mono">{testimonial.name}</div>
-                        <div className="text-emerald-400 font-mono uppercase tracking-wider text-sm">{testimonial.company}</div>
-                      </div>
-                    </div>
-                    <div className="text-4xl font-black text-emerald-400 mb-4 font-mono">{testimonial.stat}</div>
-                    <div className="flex gap-1">
-                      {[...Array(5)].map((_, j) => <FiStar key={j} className="w-6 h-6 text-emerald-400 fill-emerald-400" />)}
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </ClientOnly>
-          </div>
-        </div>
-      </section>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-xl lg:text-2xl text-gray-400 max-w-4xl mx-auto mb-12 leading-relaxed"
+          >
+            Enterprise-grade Git platform with <span className="text-emerald-400 font-bold">&lt;50ms latency</span>, zero-knowledge encryption, and distributed edge network. Built for teams who ship fast.
+          </motion.p>
 
-      <section className="min-h-screen flex items-center justify-center py-32 px-4 bg-gradient-to-b from-emerald-950/40 to-black relative pt-24">
-        <div className="max-w-4xl mx-auto text-center">
-          <StoryChapter chapter={chapters[3]} index={3} />
-          <ClientOnly>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} 
-              transition={{ duration: 0.8, delay: 1.2 }} className="max-w-4xl mx-auto mt-20">
-              <div className="bg-black rounded-3xl shadow-2xl p-12 border-2 border-emerald-500/30 overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 blur-3xl" />
-                <div className="flex items-center justify-between mb-8 pb-6 border-b border-emerald-500/20">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                    <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-                    <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
-                  </div>
-                  <span className="text-sm font-mono text-emerald-500">devsync@lightspeed</span>
-                </div>
-                <div className="space-y-4 text-left font-mono text-lg">
-                  <div className="flex gap-2"><span className="text-emerald-500 font-bold">➜</span><span className="text-cyan-400">npm</span> i -g devsync</div>
-                  <div className="text-emerald-500 pl-6">✓ Installed in 2.3s</div>
-                  <div className="flex gap-2"><span className="text-emerald-500 font-bold">➜</span><span className="text-white">devsync</span> init my-project</div>
-                  <div className="text-emerald-500 pl-6">✓ Repo created globally</div>
-                  <div className="flex gap-2"><span className="text-emerald-500 font-bold">➜</span><span className="text-cyan-400">git</span> push origin main</div>
-                  <div className="text-emerald-500 pl-6">✓ Pushed in 47ms 🚀</div>
-                  <motion.div animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="flex gap-2">
-                    <span className="text-emerald-500 font-bold">➜</span>
-                    <span className="inline-block w-2 h-6 bg-emerald-500 animate-pulse ml-1" />
-                  </motion.div>
-                </div>
-              </div>
-            </motion.div>
-          </ClientOnly>
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} 
-            transition={{ duration: 0.8, delay: 1.6 }} className="mt-20 space-y-6">
-            <motion.button whileHover={{ scale: 1.05, boxShadow: '0 25px 50px rgba(16, 185, 129, 0.4)' }} 
-              whileTap={{ scale: 0.95 }} 
-              className="w-full max-w-2xl mx-auto px-12 py-8 bg-emerald-500 text-black text-2xl font-black rounded-3xl hover:bg-emerald-400 transition-all shadow-2xl border-4 border-emerald-400 font-mono tracking-wider">
-              <FiTerminal className="inline w-10 h-10 mr-4" /> START YOUR STORY → 60 SECONDS
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
+          >
+            <motion.button
+              onClick={() => window.location.href = "/login"}
+              whileHover={{ scale: 1.05, boxShadow: '0 25px 50px rgba(16, 185, 129, 0.4)' }}
+              whileTap={{ scale: 0.95 }}
+              className="px-10 py-5 bg-emerald-500 text-black text-lg font-black rounded-2xl hover:bg-emerald-400 transition-all shadow-2xl border-2 border-emerald-400 font-mono tracking-wider flex items-center gap-3"
+            >
+              <FiTerminal className="w-6 h-6" />
+              Start Free Trial
+              <FiArrowRight className="w-5 h-5" />
             </motion.button>
-            <div className="flex items-center justify-center gap-8 text-sm text-gray-600 font-mono">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                SOC 2 • GDPR • 99.99% Uptime
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-10 py-5 bg-transparent border-2 border-emerald-500/50 text-emerald-400 text-lg font-bold rounded-2xl hover:bg-emerald-500/10 transition-all font-mono tracking-wider"
+            >
+              View Demo
+            </motion.button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="flex items-center justify-center gap-6 text-sm text-gray-500 font-mono"
+          >
+            <div className="flex items-center gap-2">
+              <FiCheckCircle className="w-4 h-4 text-emerald-500" />
+              <span>No credit card required</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiCheckCircle className="w-4 h-4 text-emerald-500" />
+              <span>14-day free trial</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiCheckCircle className="w-4 h-4 text-emerald-500" />
+              <span>SOC 2 Type II</span>
+            </div>
+          </motion.div>
+
+          {/* Terminal Demo */}
+          <ClientOnly>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="max-w-4xl mx-auto mt-16"
+            >
+              <div className="bg-black rounded-2xl shadow-2xl p-8 border border-emerald-500/30 overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 blur-3xl" />
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-emerald-500/20 relative z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  </div>
+                  <span className="text-xs font-mono text-emerald-500">devsync@terminal</span>
+                </div>
+                <div className="space-y-3 text-left font-mono text-sm relative z-10">
+                  <div className="flex gap-2"><span className="text-emerald-500">➜</span><span className="text-cyan-400">npm</span> i -g devsync</div>
+                  <div className="text-emerald-500 pl-5">✓ Installed in 2.3s</div>
+                  <div className="flex gap-2"><span className="text-emerald-500">➜</span><span className="text-white">devsync</span> init my-project</div>
+                  <div className="text-emerald-500 pl-5">✓ Repo created globally</div>
+                  <div className="flex gap-2"><span className="text-emerald-500">➜</span><span className="text-cyan-400">git</span> push origin main</div>
+                  <div className="text-emerald-500 pl-5">✓ Pushed in 47ms 🚀</div>
+                </div>
               </div>
+            </motion.div>
+          </ClientOnly>
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF */}
+      <section className="py-20 px-4 border-y border-emerald-500/20 bg-gradient-to-b from-transparent to-emerald-950/20">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <p className="text-gray-500 uppercase tracking-widest font-mono text-sm mb-8">Trusted by 150,000+ developers worldwide</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+              <StatCard value="150K+" label="Active Developers" icon={FiUsers} />
+              <StatCard value="<50ms" label="Average Latency" icon={FiZap} />
+              <StatCard value="99.99%" label="Uptime SLA" icon={FiActivity} />
+              <StatCard value="10M+" label="Daily Commits" icon={FiGitCommit} />
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* 🔥 ENHANCED FOOTER */}
+      {/* FEATURES SECTION */}
+      <section className="py-32 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-5xl lg:text-6xl font-black text-white mb-6">
+              Built for <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Performance</span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              Everything you need to scale your development workflow with enterprise-grade security and lightning-fast speed.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <FeatureCard
+              icon={FiZap}
+              title="Edge-Optimized CDN"
+              description="Distributed globally across 200+ edge locations. Push and pull from the nearest node with <50ms latency worldwide."
+            />
+            <FeatureCard
+              icon={FiLock}
+              title="Zero-Knowledge Encryption"
+              description="End-to-end encryption with zero-knowledge architecture. Your code is encrypted before it leaves your machine."
+            />
+            <FeatureCard
+              icon={FiCpu}
+              title="Parallel Processing"
+              description="Multi-threaded git operations with intelligent caching. Handle monorepos 10x faster than traditional platforms."
+            />
+            <FeatureCard
+              icon={FiShield}
+              title="SOC 2 Type II Certified"
+              description="Enterprise-grade compliance with SOC 2, GDPR, and ISO 27001. Built-in audit logs and access controls."
+            />
+            <FeatureCard
+              icon={FiActivity}
+              title="Real-Time Collaboration"
+              description="Live code reviews, instant PR notifications, and real-time conflict detection. Ship faster as a team."
+            />
+            <FeatureCard
+              icon={FiDatabase}
+              title="Infinite Scalability"
+              description="Auto-scaling infrastructure that grows with your team. From solo developer to Fortune 500 enterprises."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section className="py-32 px-4 bg-gradient-to-b from-emerald-950/20 to-transparent">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-5xl lg:text-6xl font-black text-white mb-6">
+              Loved by <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Developers</span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              Join thousands of teams shipping faster with DevSync
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <TestimonialCard
+              name="Alex Chen"
+              company="Stripe"
+              role="Engineering Lead"
+              quote="DevSync reduced our CI/CD pipeline times by 70%. The edge network is incredibly fast, and the zero-knowledge encryption gives us peace of mind."
+            />
+            <TestimonialCard
+              name="Sarah Martinez"
+              company="Shopify"
+              role="DevOps Engineer"
+              quote="Migrating from GitHub took 30 minutes. The automation features are game-changing. We're shipping features 3x faster now."
+            />
+            <TestimonialCard
+              name="James Park"
+              company="Datadog"
+              role="Security Architect"
+              quote="SOC 2 compliance out of the box saved us months of work. The security features are enterprise-grade without the complexity."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA SECTION */}
+      <section className="py-32 px-4">
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 backdrop-blur-xl rounded-3xl p-12 lg:p-16 border border-emerald-500/30"
+          >
+            <h2 className="text-5xl lg:text-6xl font-black text-white mb-6">
+              Ready to Ship Faster?
+            </h2>
+            <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
+              Join 150,000+ developers using DevSync to build and deploy at lightning speed. Start your free trial today.
+            </p>
+            <motion.button
+              onClick={() => window.location.href = "/login"}
+              whileHover={{ scale: 1.05, boxShadow: '0 25px 50px rgba(16, 185, 129, 0.4)' }}
+              whileTap={{ scale: 0.95 }}
+              className="px-12 py-6 bg-emerald-500 text-black text-xl font-black rounded-2xl hover:bg-emerald-400 transition-all shadow-2xl border-2 border-emerald-400 font-mono tracking-wider inline-flex items-center gap-3"
+            >
+              <FiTerminal className="w-7 h-7" />
+              Start Free Trial
+              <FiArrowRight className="w-6 h-6" />
+            </motion.button>
+            <p className="text-sm text-gray-500 mt-6 font-mono">
+              No credit card required • 14-day free trial • Cancel anytime
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
       <footer className="bg-gradient-to-t from-black via-gray-950 to-transparent border-t-4 border-emerald-500/30 backdrop-blur-3xl shadow-2xl shadow-emerald-500/10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            {/* Brand */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} 
-              className="space-y-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
               <div className="flex items-center gap-4 group">
                 <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl shadow-emerald-500/30 group-hover:shadow-2xl group-hover:shadow-emerald-500/50 transition-all">
                   <FiTerminal className="w-7 h-7 text-black" />
@@ -373,9 +459,7 @@ function Landing() {
               </p>
             </motion.div>
 
-            {/* Product */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} 
-              viewport={{ once: true }} transition={{ delay: 0.1 }} className="space-y-4">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="space-y-4">
               <h4 className="text-lg font-black text-white font-mono uppercase tracking-wider">Product</h4>
               {['Features', 'Pricing', 'CLI Tools', 'API', 'Changelog'].map((item, i) => (
                 <a key={i} href="#" className="block text-gray-400 hover:text-emerald-400 transition-all duration-300 font-mono text-sm flex items-center gap-2 group">
@@ -385,9 +469,7 @@ function Landing() {
               ))}
             </motion.div>
 
-            {/* Developers */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} 
-              viewport={{ once: true }} transition={{ delay: 0.2 }} className="space-y-4">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="space-y-4">
               <h4 className="text-lg font-black text-white font-mono uppercase tracking-wider">Developers</h4>
               {['Documentation', 'GitHub', 'Discord', 'Status', 'Community'].map((item, i) => (
                 <a key={i} href="#" className="block text-gray-400 hover:text-emerald-400 transition-all duration-300 font-mono text-sm flex items-center gap-2 group">
@@ -397,9 +479,7 @@ function Landing() {
               ))}
             </motion.div>
 
-            {/* Company */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} 
-              viewport={{ once: true }} transition={{ delay: 0.3 }} className="space-y-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }} className="space-y-6">
               <h4 className="text-lg font-black text-white font-mono uppercase tracking-wider">Company</h4>
               {['About', 'Blog', 'Careers', 'Security', 'Privacy'].map((item, i) => (
                 <a key={i} href="#" className="block text-gray-400 hover:text-emerald-400 transition-all duration-300 font-mono text-sm flex items-center gap-2 group">
@@ -409,8 +489,7 @@ function Landing() {
               ))}
               <div className="flex gap-4 pt-2">
                 {[FiGithub, FiTwitter, FiLinkedin].map((Icon, i) => (
-                  <motion.button key={i} whileHover={{ scale: 1.2, rotate: 5 }} 
-                    className="w-12 h-12 bg-gray-950/50 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all shadow-lg">
+                  <motion.button key={i} whileHover={{ scale: 1.2, rotate: 5 }} className="w-12 h-12 bg-gray-950/50 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all shadow-lg">
                     <Icon className="w-6 h-6 text-gray-400 group-hover:text-emerald-400" />
                   </motion.button>
                 ))}
