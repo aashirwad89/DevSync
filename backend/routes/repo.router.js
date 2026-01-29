@@ -1,18 +1,13 @@
 const express = require('express');
-const repoController = require("../controllers/repoController")
-
+const repoController = require("../controllers/repoController");
 const repoRouter = express.Router();
-
-
-repoRouter.post("/repo/create", repoController.createRepo);
-repoRouter.get("/repo/all", repoController.getAllrepositary);
-repoRouter.get("/repo/:id", repoController.fetchrepositaryById);
-repoRouter.get("/repo/name/:repoName", repoController.fetchrepositaryByName);
-repoRouter.get("/repo/user/:userId", repoController.fetchrepositaryForCurrentUser);
-repoRouter.put("/repo/update/:id", repoController.updaterepositaryById);
-repoRouter.delete("/repo/delete/:id", repoController.deleterepositaryById);
-repoRouter.patch("/repo/toggle", repoController.toggleVisiblityById);
-
-
+const GitController = require("../controllers/gitController");
+// Git Operations - Complete GitHub Flow
+repoRouter.get('/:repoId/commits', auth, GitController.listCommits);
+repoRouter.post('/:repoId/push', auth, GitController.pushRepo);
+repoRouter.post('/:repoId/pull', auth, GitController.pullRepo);
+repoRouter.post('/:repoId/revert/:commitID', auth, GitController.revertRepo);
+repoRouter.get('/:repoId/history', auth, GitController.getCommitHistory);
+repoRouter.get('/:repoId/status', auth, GitController.getStatus);
 
 module.exports = repoRouter;

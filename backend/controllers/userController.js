@@ -1,199 +1,230 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const { MongoClient, ReturnDocument } = require("mongodb");
-const dotenv = require("dotenv");
-const ObjectId = require("mongodb").ObjectId;
+const User = require("../models/userModel");
+const Repository = require("../models/repoModel");
 
-dotenv.config();
-
-const uri = process.env.MONGODB_URI;
-
-let client;
-
-// 🔗 MongoDB connection (singleton)
-async function connectClient() {
-  if (!client) {
-    client = new MongoClient(uri);
-    await client.connect();
-    console.log("MongoDB connected 🚀");
-  }
-  return client;
-}
-
-// 📝 SIGNUP
 const signup = async (req, res) => {
-  const { username, password, email } = req.body;
+    try {
+        const { username, email, password } = req.body;
 
-  try {
-    const client = await connectClient();
-    const db = client.db("devsync");
-    const userCollection = db.collection("users");
+        if (!username || !email || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Username, email, and password are required" 
+            });
+        }
 
-    const user = await userCollection.findOne({ username });
-    if (user) {
-      return res.status(400).json({ message: "User already exists" });
+        // Check existing user
+        const existingUser = await User.findOne({ 
+            $or: [{ email }, { username }] 
+        });
+        if (existingUser) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "User with this email or username already exists" 
+            });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(12);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = new User({
+            username,
+            email: email.toLowerCase(),
+            password: hashedPassword
+        });
+
+        await newUser.save();
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: newUser._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        const safeUser = {
+            id: newUser._id,
+            username: newUser.username,
+            email: newUser.email
+        };
+
+        res.status(201).json({ 
+            success: true, 
+            message: "User created successfully",
+            token, 
+            user: safeUser 
+        });
+    } catch (error) {
+        console.error("Signup error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
     }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const newUser = {
-      username,
-      email,
-      password: hashedPassword,
-      repositories: [],
-      followedUsers: [],
-      starredRepos: [],
-      createdAt: new Date()
-    };
-
-    const result = await userCollection.insertOne(newUser);
-
-    const token = jwt.sign(
-      { id: result.insertedId },
-      process.env.JWT_SECRET_KEY,
-      { expiresIn: "24h" }
-    );
-
-    res.status(201).json({ token });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
 };
 
-// 🔐 LOGIN (placeholder)
 const login = async (req, res) => {
-  const {email , password} = req.body;
-  try{
-    await connectClient();
+    try {
+        const { email, password } = req.body;
 
-    const db = client.db("devsync");
-    const userCollection = db.collection("users")
+        if (!email || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Email and password required" 
+            });
+        }
 
-    const user = await userCollection.findOne({email});
-    if(!user){
-      return res.status(400).json({message: "User not found"})
+        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+        if (!user) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid credentials" 
+            });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid credentials" 
+            });
+        }
+
+        const token = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        const safeUser = {
+            id: user._id,
+            username: user.username,
+            email: user.email
+        };
+
+        res.json({ 
+            success: true, 
+            message: "Login successful",
+            token, 
+            user: safeUser 
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
     }
-
-    const isMatch = await bcrypt.compare(password , user.password)
-    if(!isMatch){
-      return res.status(400).json({message: "Invalid crediantials"})
-    }
-
-    const token = jwt.sign({id:user._id}, process.env.JWT_SECRET_KEY, {expiresIn:"1h"})
-    res.json({token, userId:user._id});
-  }catch(e){
-    console.log("login error", e);
-    res.status(500).send("server error");
-  }
 };
 
-// 👥 USERS
 const getAllUsers = async (req, res) => {
-  try{
-await connectClient();
-const db = client.db("devsync");
-const userCollection = db.collection("users");
+    try {
+        const users = await User.find()
+            .select('-password')
+            .populate('repositories', 'name')
+            .sort({ createdAt: -1 });
 
-const users = await userCollection.find({}).toArray();
-res.json(users);
-
-
-  }catch(err){
-console.log("error in get all users", err)
-res.status(500).send("Server error in userControllers")
-  }
+        res.json({ 
+            success: true, 
+            count: users.length, 
+            users 
+        });
+    } catch (err) {
+        console.log("Error getting all users:", err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
 const getUserProfile = async (req, res) => {
-  const currId = req.params.id;
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id)
+            .select('-password')
+            .populate('repositories', 'name description visibility')
+            .populate('starredRepositories', 'name');
 
-  try{
-await connectClient();
-const db = client.db("devsync");
-const userCollection = db.collection("users");
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "User not found" 
+            });
+        }
 
-const user = await userCollection.findOne({
-  _id: new ObjectId(currId)
-});
-
-if(!user){
-  return res.status(404).json({message:"Not found the user profile"})
-  }
-
-res.send(user, {message:"Profile fetched"});
-  }catch(e){
-    console.log("error in get user profile", e);
-    res.status(500).send("server error")
-  }
-  
+        res.json({ 
+            success: true, 
+            user 
+        });
+    } catch (err) {
+        console.log("Error getting user profile:", err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
 const updateUserProfile = async (req, res) => {
-  const currentId = req.params.id;
-  const {email , password} = req.body;
-  
-  try{
+    try {
+        const { id } = req.params;
+        const { username, email, password } = req.body;
 
-await connectClient();
-const db = client.db("devsync");
-const userCollection  = db.collection("users");
+        const user = await User.findById(id).select('+password');
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "User not found" 
+            });
+        }
 
-let updatedField = {email};
+        let updateFields = {};
+        if (username) updateFields.username = username;
+        if (email) updateFields.email = email.toLowerCase();
 
-if(password){
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-   updatedField.password = hashedPassword;
-}
+        if (password) {
+            const salt = await bcrypt.genSalt(12);
+            updateFields.password = await bcrypt.hash(password, salt);
+        }
 
-const result = await userCollection.findOneAndUpdate({
-  _id: new ObjectId(currentId),
-}, {$set: updatedField},
-{ReturnDocument:"after"}
-);
+        const updatedUser = await User.findByIdAndUpdate(
+            id, 
+            { $set: updateFields }, 
+            { new: true, runValidators: true }
+        ).select('-password');
 
-if(!result.value){
-return res.status(404).json({message:"User not found"});
-}
-
-res.send(result.value);
-  }catch(err){
-    console.log("error in updating the user", err);
-    res.status(500).send("Server error")
-  }
+        res.json({ 
+            success: true, 
+            message: "Profile updated successfully", 
+            user: updatedUser 
+        });
+    } catch (err) {
+        console.log("Error updating profile:", err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
 const deleteUserProfile = async (req, res) => {
-  const currentId = req.params.id;
+    try {
+        const { id } = req.params;
+        const user = await User.findByIdAndDelete(id);
 
-  try{
- await connectClient();
-  const db = client.db("devsync");
-  const userCollection = db.collection("users");
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "User not found" 
+            });
+        }
 
-  const result = await userCollection.deleteOne({
-    _id: new ObjectId(currentId),
-  })
+        // Delete user's repositories
+        await Repository.deleteMany({ owner: id });
 
-  if(!result.deleteCount == 0){
-    return res.status(404).json({message: "User not found"})
-  }
-  res.json({message: "User profile deleted"});
-
-
-  }catch(err){
-    console.log("Error in deleting profile", err);
-    res.status(500).send("Server error");
-  }
+        res.json({ 
+            success: true, 
+            message: "User profile deleted successfully" 
+        });
+    } catch (err) {
+        console.log("Error deleting profile:", err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
 module.exports = {
-  signup,
-  login,
-  getAllUsers,
-  getUserProfile,
-  updateUserProfile,
-  deleteUserProfile
+    signup,
+    login,
+    getAllUsers,
+    getUserProfile,
+    updateUserProfile,
+    deleteUserProfile
 };
