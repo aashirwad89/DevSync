@@ -1,153 +1,200 @@
 // Entry Point - index.js
-
+require('dotenv').config();
 const express = require('express');
-const dotenv = require('dotenv');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser')
-const http = require('http')
-const {Server} = require('socket.io');
-const mainRouter = require("./routes/main.route")
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
+// Routes
+const userRouter = require('./routes/user.router');
+const repoRouter = require('./routes/repo.router'); 
+const issueRouter = require('./routes/issue.router');
 
-const yargs = require("yargs");
-const { hideBin } = require("yargs/helpers");
-require('dotenv').config();
+const { auth } = require('./middleware/authMiddleware');
 
+class GitHubCloneServer {
+    constructor() {
+        this.app = express();
+        this.port = process.env.PORT || 5000;
+        this.setupMiddleware();
+        this.setupMongoDB();
+        this.setupRoutes();
+        this.setupSocketIO();
+    }
 
+    setupMiddleware() {
+        // CORS - Frontend ke liye
+        this.app.use(cors({
+            origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization']
+        }));
 
-const { initRepo } = require("./controllers/init");
-const { addRepo } = require("./controllers/add");
-const { commitRepo } = require("./controllers/commit");
-const { pushRepo } = require("./controllers/push");
-const { pullRepo } = require("./controllers/pull");
-const { revertRepo } = require("./controllers/revert");
-const { listCommits } = require("./controllers/list");
+        // Body parsers - IMPORTANT ORDER!
+        this.app.use(express.json({ limit: '50mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+        
+        // Static files (uploads)
+        this.app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+    }
 
-dotenv.config();
+    async setupMongoDB() {
+        try {
+            const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/github-clone';
+            
+            await mongoose.connect(mongoURI, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+            });
 
+            console.log("✅ MongoDB connected successfully 🚀");
+        } catch (error) {
+            console.error("❌ MongoDB connection failed:", error);
+            process.exit(1);
+        }
+    }
 
+    setupRoutes() {
+        // API Versioning - Professional structure
+        this.app.use('/api/v1/users', userRouter);
+        this.app.use('/api/v1/repos', repoRouter);
+        this.app.use('/api/v1/issues', issueRouter);
 
-yargs(hideBin(process.argv))
-.command("start", "Starts a new server", {} , startServer )
-  .command(
-    "init",
-    "Initialise a new repository",
-    {},
-    initRepo
-  )
-  .command(
-    "add <file>",
-    "Add a file to the repository",
-    (yargs) => {
-      yargs.positional("file", {
-        describe: "File to add to the staging area",
-        type: "string",
-      });
+        // Health check
+        this.app.get('/api/health', (req, res) => {
+            res.json({ 
+                status: 'OK', 
+                timestamp: new Date().toISOString(),
+                uptime: process.uptime()
+            });
+        });
+
+        // Root endpoint
+        this.app.get('/', (req, res) => {
+            res.json({
+                message: 'GitHub Clone API v1.0 🚀',
+                endpoints: {
+                    users: '/api/v1/users',
+                    repos: '/api/v1/repos',
+                    issues: '/api/v1/issues',
+                    health: '/api/health'
+                },
+                docs: 'Check Postman collection in /docs'
+            });
+        });
+
+        // 404 handler
+        this.app.use('*', (req, res) => {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Route not found' 
+            });
+        });
+    }
+
+    setupSocketIO() {
+        const httpServer = http.createServer(this.app);
+        this.io = new Server(httpServer, {
+            cors: {
+                origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+                methods: ['GET', 'POST']
+            }
+        });
+
+        this.io.on('connection', (socket) => {
+            console.log('🔌 Socket connected:', socket.id);
+
+            // Join user room for notifications
+            socket.on('joinRoom', (userId) => {
+                socket.join(userId);
+                console.log(`👤 User ${userId} joined room`);
+            });
+
+            // Repo events
+            socket.on('repoUpdate', (data) => {
+                this.io.to(data.userId).emit('repoUpdated', data);
+            });
+
+            socket.on('newIssue', (data) => {
+                this.io.to(data.repoId).emit('issueCreated', data);
+            });
+
+            socket.on('disconnect', () => {
+                console.log('🔌 Socket disconnected:', socket.id);
+            });
+        });
+
+        this.server = httpServer;
+    }
+
+    start() {
+        this.server.listen(this.port, () => {
+            console.log(`\n🚀 Server running on http://localhost:${this.port}`);
+            console.log(`📡 API Base URL: http://localhost:${this.port}/api/v1`);
+            console.log(`🔌 Socket.IO ready on port ${this.port}`);
+            console.log(`📊 Health: http://localhost:${this.port}/api/health`);
+            
+            console.log('\n📋 Available Endpoints:');
+            console.log('  👤 Users:');
+            console.log('    POST /api/v1/users/signup');
+            console.log('    POST /api/v1/users/login');
+            console.log('  📂 Repos:');
+            console.log('    POST /api/v1/repos/');
+            console.log('    GET  /api/v1/repos/');
+            console.log('  🐛 Issues:');
+            console.log('    POST /api/v1/issues/');
+        });
+    }
+}
+
+// CLI Commands Handler
+const { hideBin } = require('yargs/helpers');
+const yargs = require('yargs')(hideBin(process.argv));
+
+const cliCommands = {
+    init: async (repoId) => {
+        console.log(`🗂️  Initializing repository ${repoId}...`);
+        // Call GitController.initRepo logic here
     },
-    (argv)=>{
-        addRepo(argv.file);
-    }
-  )
-  .command(
-    "commit <message>",
-    "Commit the staged files",
-    (yargs) => {
-      yargs.positional("message", {
-        describe: "Commit Message",
-        type: "string",
-      });
+    add: async (filePath) => {
+        console.log(`➕ Adding ${filePath} to staging...`);
     },
-    (argv)=>{
-    commitRepo(argv.message)
+    commit: async (message) => {
+        console.log(`✨ Committing: "${message}"`);
     }
-  )
-  .command(
-    "push",
-    "Push commits to S3",
-    {},
-    (argv)=>{
-      pushRepo(argv.file)
-    }
-  )
-  .command(
-    "pull",
-    "Pull commits from S3",
-    {},
-    (argv)=> {
-      pullRepo(argv.file);
-    }
-  )
-  .command(
-    "revert <commitID>",
-    "Revert to a specific commit",
-    (yargs) => {
-      yargs.positional("commitID", {
-        describe: "Commit ID to revert to",
-        type: "string",
-      });
-    },
-    (argv)=>{
-      revertRepo(argv.commitID)
-    }
-  )
-  .command(
-  "list",
-  "List all available commits",
-  {},
-  () => {
-    listCommits();
-  }
-)
-  .demandCommand(1, "You need at least one command")
-  .help().argv;
+};
 
-
-  function startServer(){
-    const app = express();
-   const port = process.env.PORT || 3000;
-
-
-   app.use(bodyParser.json());
-   app.use(express.json());
-   
-   const mongoURI = process.env.MONGODB_URI
-  mongoose.connect(mongoURI)
-  .then(() => {
-    console.log("MongoDB connected 🚀");
-  })
-  .catch((err) => {
-    console.error("Unable to connect with mongoDb 🙂", err);
-  });
-
-   app.use(cors({origin: "*"}));
-   app.use("/",mainRouter);
-
-   const httpServer = http.createServer(app); 
-   const io = new Server(httpServer, {
-    cors:{
-      origin: "*",
-      methods:["GET", "POST"]
-    }
-   })
-
-   io.on("connection", (socket)=>{
-    socket.on("joinRoom", (userID)=>{
-      userID = userID;
-      console.log("====")
-      console.log(user);
-      console.log("====")
-socket.join(userID);
-    });
-   })
-
-   const db = mongoose.connection;
-   db.once("open", async()=>{
-    console.log("CRUD operations called");
-    // crud operations are here
-   })
-
-   httpServer.listen(port, ()=>{
-    console.log(`Server is running on PORT ${port}`)
-   })
-  }
+// CLI Setup
+yargs
+    .scriptName('gitclone')
+    .usage('$0 <cmd> [args]')
+    .command('start', 'Start the GitHub Clone server', {}, () => {
+        new GitHubCloneServer().start();
+    })
+    .command('init <repoId>', 'Initialize a new repository', (yargs) => {
+        yargs.positional('repoId', { type: 'string', demandOption: true });
+    }, (argv) => {
+        cliCommands.init(argv.repoId);
+    })
+    .command('add <file>', 'Add file to staging', (yargs) => {
+        yargs.positional('file', { type: 'string', demandOption: true });
+    }, (argv) => {
+        cliCommands.add(argv.file);
+    })
+    .command('commit <message>', 'Commit staged files', (yargs) => {
+        yargs.positional('message', { type: 'string', demandOption: true });
+    }, (argv) => {
+        cliCommands.commit(argv.message);
+    })
+    .command('push', 'Push to remote', {}, () => {
+        console.log('🚀 Pushing commits...');
+    })
+    .command('pull', 'Pull from remote', {}, () => {
+        console.log('⬇️  Pulling commits...');
+    })
+    .demandCommand(1, 'Please specify a command')
+    .help()
+    .argv;

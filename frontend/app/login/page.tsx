@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/purity */
 'use client'
 
@@ -5,9 +6,10 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiTerminal, FiMail, FiLock, FiUser, FiGithub, FiUserPlus, 
-  FiArrowRight, FiCheckCircle, FiZap, FiActivity 
+  FiArrowRight, FiCheckCircle, FiZap, FiActivity, FiAlertCircle 
 } from 'react-icons/fi'
-import { div } from 'framer-motion/client'
+import { useAuth } from '../authContext' //Adjust path to your AuthContext
+import { useRouter } from 'next/navigation'
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true)
@@ -15,15 +17,31 @@ const AuthPage = () => {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const { login, signup, isLoading: authLoading } = useAuth()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setLoading(false)
-    console.log({ isLogin, email, password, name })
+    setError('')
+
+    try {
+      if (isLogin) {
+        // Login
+        await login(email, password)
+        router.push('/dashboard') // Redirect to dashboard after login
+      } else {
+        // Signup
+        await signup(name, email, password)
+        router.push('/dashboard') // Redirect after signup
+      }
+    } catch (err: any) {
+      setError(err.message || (isLogin ? 'Invalid credentials' : 'Signup failed'))
+    } finally {
+      setLoading(false)
+    } 
   }
 
   const SocialButton = ({ 
@@ -98,7 +116,7 @@ const AuthPage = () => {
             <div className="bg-emerald-500/10 backdrop-blur-xl border border-emerald-500/30 rounded-2xl px-8 py-4 inline-block">
               <div className="flex items-center gap-2 text-emerald-400 font-mono text-sm mb-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                devsync@auth:~$ 
+                devsync@auth:~$
               </div>
               <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 bg-clip-text text-transparent tracking-tight">
                 {isLogin ? 'Welcome Back' : 'Join DevSync'}
@@ -116,6 +134,18 @@ const AuthPage = () => {
               className="bg-gray-950/50 backdrop-blur-3xl border border-emerald-500/30 rounded-3xl p-8 shadow-2xl shadow-emerald-500/10"
             >
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Error Message */}
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl backdrop-blur-sm flex items-start gap-3 font-mono text-sm"
+                  >
+                    <FiAlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    {error}
+                  </motion.div>
+                )}
+
                 {/* Email Field */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                   <label className="block text-sm font-mono text-emerald-400 mb-2 flex items-center gap-2">
@@ -131,6 +161,7 @@ const AuthPage = () => {
                       className="w-full bg-black/50 border border-white/20 rounded-2xl px-12 py-4 text-white font-mono placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
                       placeholder="dev@lightspeed.com"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </motion.div>
@@ -146,7 +177,7 @@ const AuthPage = () => {
                     >
                       <label className="block text-sm font-mono text-emerald-400 mb-2 flex items-center gap-2">
                         <FiUser className="w-4 h-4" />
-                        Full Name
+                        Username
                       </label>
                       <div className="relative">
                         <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
@@ -155,8 +186,9 @@ const AuthPage = () => {
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className="w-full bg-black/50 border border-white/20 rounded-2xl px-12 py-4 text-white font-mono placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
-                          placeholder="Enter your full name"
+                          placeholder="Enter your username"
                           required
+                          disabled={loading}
                         />
                       </div>
                     </motion.div>
@@ -179,6 +211,7 @@ const AuthPage = () => {
                       placeholder="••••••••"
                       minLength={8}
                       required
+                      disabled={loading}
                     />
                   </div>
                 </motion.div>
@@ -186,12 +219,12 @@ const AuthPage = () => {
                 {/* Submit Button */}
                 <motion.button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || authLoading}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-black text-lg py-5 px-8 rounded-2xl font-mono uppercase tracking-wider shadow-2xl shadow-emerald-500/30 hover:from-emerald-400 hover:to-teal-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                 >
-                  {loading ? (
+                  {loading || authLoading ? (
                     <>
                       <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                       Authenticating...
@@ -238,8 +271,13 @@ const AuthPage = () => {
                 className="mt-10 pt-8 border-t border-emerald-500/20 text-center"
               >
                 <button
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-mono text-sm transition-all duration-300 group"
+                  type="button"
+                  onClick={() => {
+                    setIsLogin(!isLogin)
+                    setError('')
+                  }}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-mono text-sm transition-all duration-300 group disabled:opacity-50"
                 >
                   {isLogin 
                     ? 'New to DevSync? Create account' 

@@ -1,26 +1,46 @@
 const mongoose = require('mongoose');
-const {Schema} = mongoose;
+const { Schema } = mongoose;
+
+const CommentSchema = new Schema({
+    text: { type: String, required: true },
+    author: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    timestamp: { type: Date, default: Date.now }
+});
 
 const IssueSchema = new Schema({
-    title:{
-        type:String,
-        required:true
+    title: {
+        type: String,
+        required: true
     },
-    description:{
-        type:String,
-        required:true,
+    description: {
+        type: String,
+        required: true
     },
-    status:{
-        type:String,
-        enum:["open", "closed"],
+    status: {
+        type: String,
+        enum: ["open", "closed"],
         default: "open"
     },
-repositary:{
-    type:Schema.Types.ObjectId,
-    ref:"Repositary",
-    required:true
-},
-})
+    repository: {
+        type: Schema.Types.ObjectId,
+        ref: "Repository",
+        required: true
+    },
+    author: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    },
+    assignee: {
+        type: Schema.Types.ObjectId,
+        ref: "User"
+    },
+    labels: [{
+        type: String
+    }],
+    comments: [CommentSchema]
+}, {
+    timestamps: true
+});
 
-const Issue = mongoose.model("Issue", IssueSchema);
-module.exports = Issue;
+module.exports = mongoose.model("Issue", IssueSchema);
