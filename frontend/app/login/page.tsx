@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/purity */
 'use client'
 
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  FiTerminal, FiMail, FiLock, FiUser, FiGithub, FiUserPlus, 
+  FiTerminal, FiMail, FiLock, FiUser, FiGithub, 
   FiArrowRight, FiCheckCircle, FiZap, FiActivity, FiAlertCircle 
 } from 'react-icons/fi'
-import { useAuth } from '../authContext' //Adjust path to your AuthContext
+import { useAuth } from '../../contexts/authContext' 
 import { useRouter } from 'next/navigation'
 
 const AuthPage = () => {
@@ -29,13 +28,12 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        // Login
         await login(email, password)
-        router.push('/dashboard') // Redirect to dashboard after login
       } else {
-        // Signup
+        if (!name.trim()) {
+          throw new Error('Username is required')
+        }
         await signup(name, email, password)
-        router.push('/dashboard') // Redirect after signup
       }
     } catch (err: any) {
       setError(err.message || (isLogin ? 'Invalid credentials' : 'Signup failed'))
@@ -135,16 +133,19 @@ const AuthPage = () => {
             >
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Error Message */}
-                {error && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl backdrop-blur-sm flex items-start gap-3 font-mono text-sm"
-                  >
-                    <FiAlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    {error}
-                  </motion.div>
-                )}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl backdrop-blur-sm flex items-start gap-3 font-mono text-sm"
+                    >
+                      <FiAlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      {error}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Email Field */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -161,7 +162,7 @@ const AuthPage = () => {
                       className="w-full bg-black/50 border border-white/20 rounded-2xl px-12 py-4 text-white font-mono placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
                       placeholder="dev@lightspeed.com"
                       required
-                      disabled={loading}
+                      disabled={loading || authLoading}
                     />
                   </div>
                 </motion.div>
@@ -188,7 +189,7 @@ const AuthPage = () => {
                           className="w-full bg-black/50 border border-white/20 rounded-2xl px-12 py-4 text-white font-mono placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
                           placeholder="Enter your username"
                           required
-                          disabled={loading}
+                          disabled={loading || authLoading}
                         />
                       </div>
                     </motion.div>
@@ -211,7 +212,7 @@ const AuthPage = () => {
                       placeholder="••••••••"
                       minLength={8}
                       required
-                      disabled={loading}
+                      disabled={loading || authLoading}
                     />
                   </div>
                 </motion.div>
@@ -253,13 +254,13 @@ const AuthPage = () => {
                   icon={<FiGithub className="w-5 h-5" />}
                   label="Continue with GitHub"
                   gradient="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800"
-                  onClick={() => console.log('GitHub OAuth')}
+                  onClick={() => console.log('GitHub OAuth - Coming Soon!')}
                 />
                 <SocialButton
                   icon={<FiMail className="w-5 h-5" />}
                   label="Continue with Google"
                   gradient="bg-gradient-to-r from-red-500/10 to-pink-500/10 hover:from-red-500/20 hover:to-pink-500/20"
-                  onClick={() => console.log('Google OAuth')}
+                  onClick={() => console.log('Google OAuth - Coming Soon!')}
                 />
               </div>
 
@@ -275,8 +276,11 @@ const AuthPage = () => {
                   onClick={() => {
                     setIsLogin(!isLogin)
                     setError('')
+                    setEmail('')
+                    setPassword('')
+                    setName('')
                   }}
-                  disabled={loading}
+                  disabled={loading || authLoading}
                   className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-mono text-sm transition-all duration-300 group disabled:opacity-50"
                 >
                   {isLogin 

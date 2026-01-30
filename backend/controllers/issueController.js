@@ -1,6 +1,6 @@
 const Issue = require("../models/issueModel");
 const Repository = require("../models/repoModel");
-const { auth } = require('../middleware/authMiddleware');
+const auth = require('../middlewares/authMiddleware').auth;
 
 const createIssue = async (req, res) => {
     try {
