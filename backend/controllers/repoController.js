@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Repository = require('../models/repoModel');
 const User = require('../models/userModel');
-const { auth } = require('../middleware/authMiddleware');
+const { auth } = require('../middlewares/authMiddleware');
 
 const createRepo = async (req, res) => {
     try {

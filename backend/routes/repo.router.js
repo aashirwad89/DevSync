@@ -2,6 +2,7 @@ const express = require('express');
 const repoController = require("../controllers/repoController");
 const repoRouter = express.Router();
 const GitController = require("../controllers/gitController");
+const { auth } = require('../middlewares/authMiddleware');
 // Git Operations - Complete GitHub Flow
 repoRouter.get('/:repoId/commits', auth, GitController.listCommits);
 repoRouter.post('/:repoId/push', auth, GitController.pushRepo);

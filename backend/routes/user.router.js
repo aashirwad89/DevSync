@@ -1,6 +1,7 @@
 const express = require('express');
 const userController = require("../controllers/userController");
 const userRouter = express.Router();
+const auth = require('../middlewares/authMiddleware').auth; 
 
 // Auth routes
 userRouter.post("/signup", userController.signup);
@@ -11,5 +12,13 @@ userRouter.get("/", userController.getAllUsers);           // GET /api/users
 userRouter.get("/:id", userController.getUserProfile);     // GET /api/users/:id
 userRouter.put("/:id", userController.updateUserProfile);  // PUT /api/users/:id
 userRouter.delete("/:id", userController.deleteUserProfile); // DELETE /api/users/:id
+// routes/user.router.js mein ye add karo:
+userRouter.get('/me', auth, async (req, res) => {
+  res.json({ 
+    success: true, 
+    data: req.user 
+  });
+});
+
 
 module.exports = userRouter;
