@@ -1,257 +1,336 @@
-const mongoose = require('mongoose');
-const Repository = require('../models/repoModel');
+const Repo = require('../models/repoModel');
 const User = require('../models/userModel');
-const { auth } = require('../middlewares/authMiddleware');
 
-const createRepo = async (req, res) => {
-    try {
-        const { name, description, content, visibility } = req.body;
-
-        if (!name) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Repository name is required" 
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(req.user._id)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid User ID" 
-            });
-        }
-
-        // Check if repo exists for user
-        const existingRepo = await Repository.findOne({ 
-            owner: req.user._id, 
-            name 
-        });
-        if (existingRepo) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Repository with this name already exists" 
-            });
-        }
-
-        const newRepo = new Repository({
-            name,
-            description: description || '',
-            content: content || [],
-            visibility: visibility || 'public',
-            owner: req.user._id
-        });
-
-        const result = await newRepo.save();
-
-        // Add to user's repositories
-        await User.findByIdAndUpdate(req.user._id, {
-            $push: { repositories: result._id }
-        });
-
-        const populatedRepo = await Repository.findById(result._id)
-            .populate('owner', 'username email');
-
-        res.status(201).json({
-            success: true,
-            message: "Repository created successfully!",
-            repository: populatedRepo
-        });
-    } catch (err) {
-        console.log("Create repo error:", err);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
-};
-
+// Get all repositories
 const getAllRepos = async (req, res) => {
-    try {
-        const { owner } = req.query;
-        const filter = owner ? { owner } : {};
-
-        const repos = await Repository.find(filter)
-            .populate("owner", "username")
-            .populate("issues")
-            .sort({ createdAt: -1 })
-            .lean();
-
-        res.status(200).json({ 
-            success: true, 
-            count: repos.length, 
-            repositories: repos 
-        });
-    } catch (err) {
-        console.log("Error getting all repos:", err);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
+  try {
+    const repos = await Repo.find()
+      .populate('owner', 'username email')
+      .populate('collaborators', 'username email')
+      .sort({ updatedAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: repos.length,
+      data: repos
+    });
+  } catch (error) {
+    console.error('Error in getAllRepos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch repositories',
+      error: error.message
+    });
+  }
 };
 
+// Get single repository by ID
 const getRepoById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const repo = await Repository.findById(id)
-            .populate('owner', 'username email')
-            .populate('collaborators', 'username')
-            .populate('issues');
-
-        if (!repo) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Repository not found" 
-            });
-        }
-
-        res.status(200).json({ 
-            success: true, 
-            repository: repo 
-        });
-    } catch (err) {
-        console.log("Error fetching repo by ID:", err);
-        res.status(500).json({ success: false, message: "Server error" });
+  try {
+    const repo = await Repo.findById(req.params.id)
+      .populate('owner', 'username email')
+      .populate('collaborators', 'username email');
+    
+    if (!repo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Repository not found'
+      });
     }
+
+    res.status(200).json({
+      success: true,
+      data: repo
+    });
+  } catch (error) {
+    console.error('Error in getRepoById:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch repository',
+      error: error.message
+    });
+  }
 };
 
-const getRepoByName = async (req, res) => {
-    try {
-        const { repoName } = req.params;
-        const repo = await Repository.findOne({ name: repoName })
-            .populate('owner', 'username')
-            .populate('issues');
+// Create new repository
+const createRepo = async (req, res) => {
+  try {
+    const { name, description, isPublic } = req.body;
+    const userId = req.user._id; // From auth middleware
 
-        if (!repo) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Repository not found" 
-            });
-        }
+    // Check if repo with same name already exists for this user
+    const existingRepo = await Repo.findOne({ 
+      name, 
+      owner: userId 
+    });
 
-        res.status(200).json({ 
-            success: true, 
-            repository: repo 
-        });
-    } catch (err) {
-        console.log("Error fetching repo by name:", err);
-        res.status(500).json({ success: false, message: "Server error" });
+    if (existingRepo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Repository with this name already exists'
+      });
     }
+
+    const repo = await Repo.create({
+      name,
+      description,
+      isPublic: isPublic !== undefined ? isPublic : true,
+      owner: userId,
+      stars: 0,
+      collaborators: []
+    });
+
+    const populatedRepo = await Repo.findById(repo._id)
+      .populate('owner', 'username email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Repository created successfully',
+      data: populatedRepo
+    });
+  } catch (error) {
+    console.error('Error in createRepo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create repository',
+      error: error.message
+    });
+  }
 };
 
-const getReposByUser = async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const repos = await Repository.find({ owner: userId })
-            .populate('owner', 'username');
+// Update repository
+const updateRepo = async (req, res) => {
+  try {
+    const { name, description, isPublic } = req.body;
+    const userId = req.user._id;
 
-        if (!repos || repos.length === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "No repositories found for user" 
-            });
-        }
+    const repo = await Repo.findById(req.params.id);
 
-        res.json({ 
-            success: true, 
-            message: "Repositories found!", 
-            repositories: repos 
-        });
-    } catch (err) {
-        console.log("Error fetching repos for user:", err);
-        res.status(500).json({ success: false, message: "Server error" });
+    if (!repo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Repository not found'
+      });
     }
+
+    // Check if user is owner
+    if (repo.owner.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this repository'
+      });
+    }
+
+    repo.name = name || repo.name;
+    repo.description = description || repo.description;
+    repo.isPublic = isPublic !== undefined ? isPublic : repo.isPublic;
+    
+    await repo.save();
+
+    const updatedRepo = await Repo.findById(repo._id)
+      .populate('owner', 'username email')
+      .populate('collaborators', 'username email');
+
+    res.status(200).json({
+      success: true,
+      message: 'Repository updated successfully',
+      data: updatedRepo
+    });
+  } catch (error) {
+    console.error('Error in updateRepo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update repository',
+      error: error.message
+    });
+  }
 };
 
-const updateRepoById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, description, content, visibility } = req.body;
+// Delete repository
+const deleteRepo = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const repo = await Repo.findById(req.params.id);
 
-        const repo = await Repository.findById(id);
-        if (!repo) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Repository not found" 
-            });
-        }
-
-        if (name) repo.name = name;
-        if (description !== undefined) repo.description = description;
-        if (content) repo.content.push(content);
-        if (visibility) repo.visibility = visibility;
-
-        const updatedRepo = await repo.save();
-
-        res.json({
-            success: true,
-            message: "Repository updated successfully",
-            repository: updatedRepo
-        });
-    } catch (err) {
-        console.log("Error updating repo:", err);
-        res.status(500).json({ success: false, message: "Server error" });
+    if (!repo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Repository not found'
+      });
     }
+
+    // Check if user is owner
+    if (repo.owner.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete this repository'
+      });
+    }
+
+    await repo.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Repository deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error in deleteRepo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete repository',
+      error: error.message
+    });
+  }
 };
 
-const toggleVisibility = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const repo = await Repository.findById(id);
-        
-        if (!repo) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Repository not found" 
-            });
-        }
+// Get user's repositories
+const getUserRepos = async (req, res) => {
+  try {
+    const userId = req.params.userId || req.user._id;
 
-        repo.visibility = repo.visibility === 'public' ? 'private' : 'public';
-        await repo.save();
+    const repos = await Repo.find({
+      $or: [
+        { owner: userId },
+        { collaborators: userId }
+      ]
+    })
+      .populate('owner', 'username email')
+      .populate('collaborators', 'username email')
+      .sort({ updatedAt: -1 });
 
-        res.json({
-            success: true,
-            message: "Visibility toggled successfully",
-            visibility: repo.visibility
-        });
-    } catch (err) {
-        console.log("Error toggling visibility:", err);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
+    res.status(200).json({
+      success: true,
+      count: repos.length,
+      data: repos
+    });
+  } catch (error) {
+    console.error('Error in getUserRepos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user repositories',
+      error: error.message
+    });
+  }
 };
 
-const deleteRepoById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const repo = await Repository.findByIdAndDelete(id);
-        
-        if (!repo) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Repository not found" 
-            });
-        }
+// Add collaborator to repository
+const addCollaborator = async (req, res) => {
+  try {
+    const { userId: collaboratorId } = req.body;
+    const repoId = req.params.id;
+    const ownerId = req.user._id;
 
-        // Remove from user's repositories
-        await User.updateMany(
-            { repositories: id },
-            { $pull: { repositories: id } }
-        );
+    const repo = await Repo.findById(repoId);
 
-        // Delete related issues
-        await Issue.deleteMany({ repository: id });
-
-        res.json({ 
-            success: true, 
-            message: "Repository deleted successfully" 
-        });
-    } catch (err) {
-        console.log("Error deleting repo:", err);
-        res.status(500).json({ success: false, message: "Server error" });
+    if (!repo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Repository not found'
+      });
     }
+
+    // Check if user is owner
+    if (repo.owner.toString() !== ownerId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only repository owner can add collaborators'
+      });
+    }
+
+    // Check if collaborator exists
+    const collaborator = await User.findById(collaboratorId);
+    if (!collaborator) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if already a collaborator
+    if (repo.collaborators.includes(collaboratorId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is already a collaborator'
+      });
+    }
+
+    repo.collaborators.push(collaboratorId);
+    await repo.save();
+
+    const updatedRepo = await Repo.findById(repo._id)
+      .populate('owner', 'username email')
+      .populate('collaborators', 'username email');
+
+    res.status(200).json({
+      success: true,
+      message: 'Collaborator added successfully',
+      data: updatedRepo
+    });
+  } catch (error) {
+    console.error('Error in addCollaborator:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add collaborator',
+      error: error.message
+    });
+  }
+};
+
+// Remove collaborator from repository
+const removeCollaborator = async (req, res) => {
+  try {
+    const { userId: collaboratorId } = req.body;
+    const repoId = req.params.id;
+    const ownerId = req.user._id;
+
+    const repo = await Repo.findById(repoId);
+
+    if (!repo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Repository not found'
+      });
+    }
+
+    // Check if user is owner
+    if (repo.owner.toString() !== ownerId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only repository owner can remove collaborators'
+      });
+    }
+
+    repo.collaborators = repo.collaborators.filter(
+      id => id.toString() !== collaboratorId
+    );
+    await repo.save();
+
+    const updatedRepo = await Repo.findById(repo._id)
+      .populate('owner', 'username email')
+      .populate('collaborators', 'username email');
+
+    res.status(200).json({
+      success: true,
+      message: 'Collaborator removed successfully',
+      data: updatedRepo
+    });
+  } catch (error) {
+    console.error('Error in removeCollaborator:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove collaborator',
+      error: error.message
+    });
+  }
 };
 
 module.exports = {
-    createRepo,
-    getAllRepos,
-    getRepoById,
-    getRepoByName,
-    getReposByUser,
-    updateRepoById,
-    toggleVisibility,
-    deleteRepoById
+  getAllRepos,
+  getRepoById,
+  createRepo,
+  updateRepo,
+  deleteRepo,
+  getUserRepos,
+  addCollaborator,
+  removeCollaborator
 };
