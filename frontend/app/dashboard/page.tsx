@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Code, Activity, LogOut, AlertCircle, CheckCircle2, Clock, User, FolderGit, TrendingUp, Star, Calendar, ExternalLink, GitBranch, Zap, Flame, Target, Award, ArrowUpRight, Sparkles, FileCode, Settings, BarChart3, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/authContext';
 import axios from 'axios'; 
+import router from 'next/router';
 
 interface Project {
   _id: string;
@@ -364,15 +365,20 @@ const DevSyncDashboard: React.FC = () => {
           <nav className="space-y-1.5">
             {[
               { id: 'dashboard', icon: Activity, label: 'Dashboard', badge: null },
-              { id: 'projects', icon: FolderGit, label: 'Projects', badge: stats.totalProjects.toString() },
-              { id: 'issues', icon: AlertCircle, label: 'Issues', badge: stats.activeIssues.toString() },
+              { id: 'projects', icon: FolderGit, label: 'Projects', badge: stats.totalProjects.toString(), href: "/repo" },
+              { id: 'issues', icon: AlertCircle, label: 'Issues', badge: stats.activeIssues.toString(), href: "/issue" },
               { id: 'activity', icon: TrendingUp, label: 'Activity', badge: null },
               { id: 'team', icon: User, label: 'Team', badge: null },
               { id: 'settings', icon: Settings, label: 'Settings', badge: null }
             ].map((item, idx) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  if (item.href) {
+                   window.location.href = item.href;
+                  }
+                  setActiveTab(item.id);
+                }}
                 className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
                   activeTab === item.id
                     ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 shadow-lg shadow-green-500/20 scale-105'
