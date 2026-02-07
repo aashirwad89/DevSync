@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-
-
 // Entry Point - index.js
 require('dotenv').config();
 const express = require('express');
@@ -47,7 +45,9 @@ class DevSyncServer {
 
     setupRoutes() {
         // API Versioning
-        this.app.use('/api/v1/users', userRouter);
+        // ✅ FIXED: Auth routes should be at /api/v1/auth
+        this.app.use('/api/v1/auth', userRouter);  // Changed from /users to /auth
+        this.app.use('/api/v1/users', userRouter); // Keep this for backward compatibility
         this.app.use('/api/v1/repos', repoRouter);
         this.app.use('/api/v1/issues', issueRouter);
 
@@ -66,6 +66,7 @@ class DevSyncServer {
             res.json({
                 message: 'DevSync API v1.0 🚀',
                 endpoints: {
+                    auth: '/api/v1/auth',
                     users: '/api/v1/users',
                     repos: '/api/v1/repos',
                     issues: '/api/v1/issues',
@@ -154,14 +155,17 @@ class DevSyncServer {
             console.log(`📊 Health: http://localhost:${this.port}/api/health`);
             
             console.log('\n📋 Available Endpoints:');
-            console.log('  👤 Users:');
-            console.log('    POST /api/v1/users/signup');
-            console.log('    POST /api/v1/users/login');
+            console.log('  👤 Auth & Users:');
+            console.log('    POST /api/v1/auth/signup');
+            console.log('    POST /api/v1/auth/login');
+            console.log('    GET  /api/v1/auth/me');
+            console.log('    PATCH /api/v1/auth/update-profile');
             console.log('  📂 Repos:');
             console.log('    POST /api/v1/repos/');
             console.log('    GET  /api/v1/repos/');
             console.log('  🐛 Issues:');
             console.log('    POST /api/v1/issues/');
+            console.log('    GET  /api/v1/issues/');
         });
     }
 }
