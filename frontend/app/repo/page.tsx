@@ -27,7 +27,10 @@ import {
   Activity,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  X,
+  AlertCircle,
+  Loader
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -46,44 +49,84 @@ interface Repo {
   updatedAt: string;
 }
 
+interface CreateRepoFormData {
+  name: string;
+  description: string;
+  isPublic: boolean;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function ReposPage() {
   const router = useRouter();
   const { user } = useAuth();
   
+  // State management
   const [repos, setRepos] = useState<Repo[]>([]);
   const [filteredRepos, setFilteredRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Create Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formData, setFormData] = useState<CreateRepoFormData>({
+    name: '',
+    description: '',
+    isPublic: true
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Fetch repos on mount
   useEffect(() => {
     fetchRepos();
   }, []);
 
+  // Filter repos when search/filter changes
   useEffect(() => {
     filterRepos();
   }, [repos, searchQuery, filterType]);
 
+  /**
+   * Fetch all repositories from API
+   */
   const fetchRepos = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.error('No auth token found');
+        return;
+      }
+
       const response = await axios.get(`${API_BASE_URL}/api/v1/repos`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setRepos(response.data.data || []);
+
+      // Handle different response formats
+      let reposData = response.data.data || response.data || [];
+      
+      // Ensure it's an array
+      if (!Array.isArray(reposData)) {
+        reposData = [];
+      }
+
+      setRepos(reposData);
+      console.log('✅ Repos fetched:', reposData.length);
     } catch (error) {
-      console.error('Failed to fetch repos:', error);
+      console.error('❌ Failed to fetch repos:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Filter repos based on search query and filter type
+   */
   const filterRepos = () => {
     let filtered = [...repos];
 
@@ -107,6 +150,89 @@ function ReposPage() {
     setFilteredRepos(filtered);
   };
 
+  /**
+   * Create new repository
+   */
+  const handleCreateRepo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!formData.name.trim()) {
+      setSubmitError('Repository name is required');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setSubmitError('Authentication required');
+        return;
+      }
+
+      // Create repository
+      const response = await axios.post(
+        `${API_BASE_URL}/api/v1/repos`,
+        {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          isPublic: formData.isPublic
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      console.log('✅ Repository created:', response.data);
+
+      // Get the created repo from response
+      const newRepo = response.data.data || response.data;
+
+      if (newRepo && newRepo._id) {
+        // ✅ ADD NEW REPO TO LOCAL STATE IMMEDIATELY
+        setRepos(prevRepos => [newRepo, ...prevRepos]);
+        
+        // Reset form
+        setFormData({
+          name: '',
+          description: '',
+          isPublic: true
+        });
+        
+        // Close modal
+        setShowCreateModal(false);
+        
+        // Optional: Refresh data from API to ensure sync
+        setTimeout(() => {
+          fetchRepos();
+        }, 500);
+
+        console.log('✅ Repo added to UI immediately');
+      } else {
+        setSubmitError('Invalid response from server');
+      }
+
+    } catch (error: any) {
+      console.error('❌ Failed to create repo:', error);
+      
+      if (error.response?.status === 401) {
+        setSubmitError('Session expired. Please login again.');
+      } else if (error.response?.data?.message) {
+        setSubmitError(error.response.data.message);
+      } else {
+        setSubmitError('Failed to create repository. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Format relative dates
+   */
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -120,12 +246,42 @@ function ReposPage() {
     return date.toLocaleDateString();
   };
 
+  /**
+   * Copy repo ID to clipboard
+   */
   const copyRepoId = (id: string) => {
     navigator.clipboard.writeText(id);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  /**
+   * Delete repository
+   */
+  const handleDeleteRepo = async (repoId: string) => {
+    if (!window.confirm('Are you sure you want to delete this repository? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      await axios.delete(`${API_BASE_URL}/api/v1/repos/${repoId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Remove from local state immediately
+      setRepos(repos.filter(repo => repo._id !== repoId));
+      setActiveMenu(null);
+      
+      console.log('✅ Repository deleted');
+    } catch (error) {
+      console.error('❌ Failed to delete repo:', error);
+      alert('Failed to delete repository');
+    }
+  };
+
+  // Calculate stats
   const stats = {
     total: repos.length,
     public: repos.filter(r => r.isPublic).length,
@@ -133,6 +289,7 @@ function ReposPage() {
     owned: repos.filter(r => r.owner._id === user?._id).length,
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0e1a] via-[#0d1117] to-[#0a0e1a] flex items-center justify-center">
@@ -148,8 +305,8 @@ function ReposPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#0a0e1a] via-[#0d1117] to-[#0a0e1a] text-gray-100 p-8">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-1/2 -right-1/2 w-[800px] h-[800px] bg-gradient-to-br from-green-500/20 via-emerald-500/10 to-transparent rounded-full blur-3xl animate-float"></div>
-        <div className="absolute -bottom-1/2 -left-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-blue-500/15 via-cyan-500/10 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+        <div className="absolute -top-1/2 -right-1/2 w-[800px] h-[800px] bg-gradient-to-br from-green-500/20 via-emerald-500/10 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-1/2 -left-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-blue-500/15 via-cyan-500/10 to-transparent rounded-full blur-3xl"></div>
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
@@ -252,13 +409,18 @@ function ReposPage() {
               <FolderGit className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-400 mb-2">No repositories found</h3>
               <p className="text-gray-500">Try adjusting your filters or create a new repository</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold transition-all"
+              >
+                Create First Repository
+              </button>
             </div>
           ) : (
             filteredRepos.map((repo, idx) => (
               <div
                 key={repo._id}
-                className="relative overflow-hidden rounded-2xl border border-gray-800/50 backdrop-blur-xl p-6 bg-[#0d1117]/60 hover:border-green-500/30 transition-all duration-500 group cursor-pointer animate-fadeInUp"
-                style={{ animationDelay: `${idx * 50}ms` }}
+                className="relative overflow-hidden rounded-2xl border border-gray-800/50 backdrop-blur-xl p-6 bg-[#0d1117]/60 hover:border-green-500/30 transition-all duration-500 group cursor-pointer"
                 onClick={() => router.push(`/repos/${repo._id}`)}
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -266,11 +428,11 @@ function ReposPage() {
                 <div className="relative z-10">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1">
                       <div className="p-3 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30">
                         <FolderGit className="w-6 h-6 text-green-400" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-xl font-bold text-white group-hover:text-green-400 transition-colors">
                           {repo.name}
                         </h3>
@@ -300,7 +462,13 @@ function ReposPage() {
                       </button>
                       {activeMenu === repo._id && (
                         <div className="absolute right-0 top-12 w-48 bg-[#0d1117] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden z-20">
-                          <button className="w-full px-4 py-3 text-left hover:bg-gray-800/50 transition-all flex items-center gap-3 text-gray-300">
+                          <button 
+                            onClick={() => {
+                              router.push(`/repos/${repo._id}`);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-800/50 transition-all flex items-center gap-3 text-gray-300"
+                          >
                             <Eye className="w-4 h-4" />
                             View Details
                           </button>
@@ -315,7 +483,10 @@ function ReposPage() {
                             <Edit className="w-4 h-4" />
                             Edit Repo
                           </button>
-                          <button className="w-full px-4 py-3 text-left hover:bg-red-500/10 transition-all flex items-center gap-3 text-red-400">
+                          <button 
+                            onClick={() => handleDeleteRepo(repo._id)}
+                            className="w-full px-4 py-3 text-left hover:bg-red-500/10 transition-all flex items-center gap-3 text-red-400"
+                          >
                             <Trash2 className="w-4 h-4" />
                             Delete
                           </button>
@@ -361,6 +532,175 @@ function ReposPage() {
           )}
         </div>
       </div>
+
+      {/* ✅ CREATE REPOSITORY MODAL */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d1117] border border-gray-700/50 rounded-2xl max-w-lg w-full shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700/50">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                <FolderGit className="w-6 h-6 text-green-400" />
+                Create Repository
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setSubmitError(null);
+                }}
+                className="p-2 hover:bg-gray-800/50 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <form onSubmit={handleCreateRepo} className="p-6 space-y-5">
+              {/* Error Alert */}
+              {submitError && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-red-400 text-sm">{submitError}</p>
+                </div>
+              )}
+
+              {/* Repository Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Repository Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., my-awesome-project"
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    setSubmitError(null);
+                  }}
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-green-500/70 focus:ring-4 focus:ring-green-500/20 transition-all"
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-gray-500 mt-1">Give your repository a unique name</p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  placeholder="What is this repository about?"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-green-500/70 focus:ring-4 focus:ring-green-500/20 transition-all resize-none"
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-gray-500 mt-1">Optional but recommended</p>
+              </div>
+
+              {/* Visibility */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Visibility
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-700/50 cursor-pointer hover:bg-gray-800/30 transition-all" style={{
+                    backgroundColor: formData.isPublic ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                    borderColor: formData.isPublic ? 'rgba(16, 185, 129, 0.3)' : 'rgba(107, 114, 128, 0.3)'
+                  }}>
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={formData.isPublic}
+                      onChange={() => setFormData({ ...formData, isPublic: true })}
+                      disabled={isSubmitting}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <p className="font-semibold text-white flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-green-400" />
+                        Public
+                      </p>
+                      <p className="text-xs text-gray-500">Anyone can see this repository</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-700/50 cursor-pointer hover:bg-gray-800/30 transition-all" style={{
+                    backgroundColor: !formData.isPublic ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                    borderColor: !formData.isPublic ? 'rgba(139, 92, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'
+                  }}>
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={!formData.isPublic}
+                      onChange={() => setFormData({ ...formData, isPublic: false })}
+                      disabled={isSubmitting}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <p className="font-semibold text-white flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-purple-400" />
+                        Private
+                      </p>
+                      <p className="text-xs text-gray-500">Only you and collaborators can see</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-700/50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSubmitError(null);
+                  }}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 rounded-xl font-semibold transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !formData.name.trim()}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Create Repository
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fadeInUp {
+          animation: fadeInUp 0.5s ease-out both;
+        }
+      `}</style>
     </div>
   );
 }
