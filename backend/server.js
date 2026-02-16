@@ -6,6 +6,7 @@ const bodyParser = require('body-parser')
 const http = require('http')
 const yargs = require('yargs');
 const {Server} = require('socket.io')
+const mainRouter = require('./routes/main.routes')
 
 
 
@@ -71,9 +72,8 @@ yargs(hideBin(process.argv))
 
       app.use(cors({origin:"*"}));
 
-      app.get("/", (req, res)=>{
-         res.send("Welcome to the backend of Devsync")
-      })
+    app.use("/", mainRouter);
+
 
 let user = "test";
 
