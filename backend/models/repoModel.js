@@ -34,4 +34,4 @@ const RepositarySchema = new Schema({
 
 const Repositary = mongoose.model("Repositary", RepositarySchema);
 
-export default Repositary ;
+module.exports = Repositary;
