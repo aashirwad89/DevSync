@@ -20,13 +20,13 @@ const RepositarySchema = new Schema({
     }, 
     owner:{
         type: Schema.Types.ObjectId,
-        ref: "user",
+        ref: "User",
         require: true
     },
     issues: [
         {
             type: Schema.Types.ObjectId,
-            ref:"Issue"
+            ref:"Issues"
         }
     ]
 
