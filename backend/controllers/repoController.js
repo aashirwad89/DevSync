@@ -90,7 +90,7 @@ const fetchRepositaryByName = async (req, res) => {
 
 
 const fetchRepositaryForCurrentUser = async (req, res) => {
-    const userId = req.user.id;
+    const userId = req.params.userId;
     try {
         const repositaries = await Repositary.find({ owner: userId })
             .populate("owner", "-password")
