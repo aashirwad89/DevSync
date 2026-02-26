@@ -6,6 +6,7 @@ import Dashboard from "./components/dashboard/Dashboard"
 import Profile from "./components/user/Profile"
 import Repo from "./components/repo/Repo"
 import Issues from "./components/issues/Issues"
+import Chat from "./components/chat/Chat"
 
 function App() {
 
@@ -20,6 +21,7 @@ function App() {
 <Route path="/profile" element= {<Profile/>} /> 
 <Route path="/repo" element={<Repo/>}/>
 <Route path="/issues" element={<Issues/>}/>
+<Route path="/chat" element= {<Chat/>}/>
 </Routes>
 </Router>
   )

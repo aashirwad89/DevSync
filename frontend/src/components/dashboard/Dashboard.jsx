@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Dashboard() {
@@ -373,6 +374,26 @@ function Dashboard() {
 
       </div>
 
+      {/* AI Assistant Bubble */}
+      <div className="fixed bottom-6 right-6 z-40 group">
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-110"></div>
+        
+        {/* Button */}
+        <button
+          onClick={() => navigate('/chat')}
+          className={`relative w-14 h-14 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-full shadow-lg shadow-emerald-500/50 flex items-center justify-center cursor-pointer group-hover:scale-110 transition-transform duration-300 animate-bounce`}
+        >
+          <span className="text-white text-2xl">💬</span>
+        </button>
+
+        {/* Tooltip */}
+        <div className="absolute bottom-20 right-0 bg-gray-900 border border-emerald-500/30 text-white px-4 py-3 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
+          <p className="font-bold">Hello this side 👋</p>
+          <p className="text-xs text-gray-300 mt-1">DevAI, let's chat</p>
+        </div>
+      </div>
+
       {/* Global animations */}
       <style>{`
         @keyframes fade-in {
@@ -386,25 +407,32 @@ function Dashboard() {
           }
         }
 
+        @keyframes scale-in {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
         .animate-fade-in {
           animation: fade-in 0.6s ease-out forwards;
           opacity: 0;
+        }
+
+        .animate-scale-in {
+          animation: scale-in 0.3s ease-out;
         }
 
         .hover:scale-102:hover {
           transform: scale(1.02);
         }
 
-        /* Smooth scroll */
         html {
           scroll-behavior: smooth;
-        }
-
-        /* Light mode adjustments */
-        @media (prefers-color-scheme: light) {
-          .dark\\:border-gray-800\\/50 {
-            border-color: rgba(107, 114, 128, 0.5);
-          }
         }
       `}</style>
     </div>
