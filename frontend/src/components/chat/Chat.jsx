@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/purity */
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Menu, Plus, MessageCircle, Loader, Copy, Settings, Code, Zap, Terminal, ArrowRight } from 'lucide-react'
+import { Send, Menu, Plus, MessageCircle, Loader, Copy, Settings, Code, Zap, Terminal, ArrowRight, AlertCircle } from 'lucide-react'
+import { sendMessage } from '../../services/api'
 
 function Chat() {
   const [messages, setMessages] = useState([])
@@ -9,6 +10,8 @@ function Chat() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [messageJustCopied, setMessageJustCopied] = useState(null)
   const [showEmptyState, setShowEmptyState] = useState(true)
+  const [apiError, setApiError] = useState('')
+  const [isConnecting, setIsConnecting] = useState(false)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -18,6 +21,34 @@ function Chat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Check API connection on mount
+  useEffect(() => {
+    checkAPIConnection()
+  }, [])
+
+  const checkAPIConnection = async () => {
+    try {
+      setIsConnecting(true)
+      const response = await fetch('http://localhost:8000/api', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (response.ok) {
+        console.log('✅ API Connected')
+        setApiError('')
+      } else {
+        console.log(response)
+        setApiError('Backend not responding. Please check if server is running.')
+      }
+    } catch (error) {
+      setApiError('Cannot connect to backend. Make sure server is running on port 8000.')
+      console.error('❌ API Connection Error:', error)
+    } finally {
+      setIsConnecting(false)
+    }
+  }
 
   const suggestedQueries = [
     {
@@ -46,9 +77,15 @@ function Chat() {
     setInput(query.description)
   }
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!input.trim()) return
+
+    // Check if API is available
+    if (apiError && !apiError.includes('working')) {
+      setApiError('⚠️ Still connecting to backend. Please wait...')
+      return
+    }
 
     setShowEmptyState(false)
 
@@ -60,26 +97,87 @@ function Chat() {
       type: 'user'
     }
 
+    const userInput = input
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
+    setApiError('')
 
-    setTimeout(() => {
-      const botMessage = {
+    try {
+      // Show "working" message immediately
+      const workingMessage = {
         id: messages.length + 2,
-        author: 'AI Assistant',
-        content: '> Connected to AI service. Your response will appear here when API is integrated. 💚',
+        author: 'System',
+        content: '⏳ Working on your request... Please wait',
+        timestamp: new Date(),
+        type: 'loading'
+      }
+      setMessages(prev => [...prev, workingMessage])
+
+      // Call API with timeout
+      const response = await Promise.race([
+        sendMessage(userInput),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout. Server taking too long.')), 30000)
+        )
+      ])
+
+      // Remove "working" message and add real response
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.type !== 'loading')
+        const botMessage = {
+          id: filtered.length + 1,
+          author: 'AI Assistant',
+          content: response.reply || response.message || '> Response received from server',
+          timestamp: new Date(),
+          type: 'bot'
+        }
+        return [...filtered, botMessage]
+      })
+
+      console.log('✅ Response received:', response)
+    } catch (error) {
+      console.error('❌ Error:', error)
+
+      // Remove "working" message
+      setMessages(prev => prev.filter(msg => msg.type !== 'loading'))
+
+      let errorContent = ''
+
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network')) {
+        errorContent = '❌ Cannot connect to backend. Please start the server with: npm run dev'
+        setApiError('Backend is not running. Start it with: cd backend && npm run dev')
+      } else if (error.message?.includes('timeout')) {
+        errorContent = '❌ Server is taking too long to respond. Please check if backend is running.'
+        setApiError('Backend timeout. Please check server logs.')
+      } else if (error.response?.status === 404) {
+        errorContent = '❌ API endpoint not found. Please check backend routes.'
+        setApiError('API endpoint error. Check backend server.')
+      } else if (error.response?.status === 500) {
+        errorContent = `❌ Server error: ${error.response?.data?.error || 'Internal server error'}`
+        setApiError('Backend server error. Check server logs.')
+      } else {
+        errorContent = `❌ Error: ${error.response?.data?.error || error.message || 'Unknown error'}`
+        setApiError(error.message || 'An error occurred')
+      }
+
+      const errorMessage = {
+        id: messages.length + 2,
+        author: 'System',
+        content: errorContent,
         timestamp: new Date(),
         type: 'bot'
       }
-      setMessages(prev => [...prev, botMessage])
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setLoading(false)
-    }, 1500)
+    }
   }
 
   const clearChat = () => {
     setMessages([])
     setShowEmptyState(true)
+    setApiError('')
   }
 
   const formatTime = (date) => {
@@ -107,12 +205,18 @@ function Chat() {
         <div className="p-4 border-b border-emerald-900/30 flex items-center justify-between relative z-10">
           {sidebarOpen && (
             <div className="flex items-center gap-3 group">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center font-bold text-sm shadow-lg shadow-emerald-500/50 group-hover:shadow-emerald-400/70 transition-all">
+              <div className={`w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center font-bold text-sm shadow-lg shadow-emerald-500/50 group-hover:shadow-emerald-400/70 transition-all ${
+                isConnecting ? 'animate-pulse' : apiError ? 'opacity-60' : ''
+              }`}>
                 &lt;/&gt;
               </div>
               <div>
                 <span className="font-mono font-bold text-base tracking-wider block text-emerald-400">Dev AI</span>
-                <span className="text-xs text-emerald-600">v1.0.0</span>
+                <span className={`text-xs font-mono ${
+                  isConnecting ? 'text-yellow-500' : apiError ? 'text-red-500' : 'text-emerald-600'
+                }`}>
+                  {isConnecting ? 'connecting...' : apiError ? 'offline' : 'v1.0.0'}
+                </span>
               </div>
             </div>
           )}
@@ -128,7 +232,8 @@ function Chat() {
         {sidebarOpen && (
           <button
             onClick={clearChat}
-            className="m-4 flex items-center gap-2 w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-4 py-3 rounded-lg font-mono font-semibold transition-all hover:shadow-lg hover:shadow-emerald-500/40 active:scale-95 group overflow-hidden relative text-sm"
+            className="m-4 flex items-center gap-2 w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-4 py-3 rounded-lg font-mono font-semibold transition-all hover:shadow-lg hover:shadow-emerald-500/40 active:scale-95 group overflow-hidden relative text-sm disabled:opacity-50"
+            disabled={loading}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 group-hover:animate-shimmer"></div>
             <Plus size={18} />
@@ -144,7 +249,8 @@ function Chat() {
             {[1, 2, 3, 4].map((i) => (
               <button
                 key={i}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100 transition-all truncate group font-mono"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100 transition-all truncate group font-mono disabled:opacity-50"
+                disabled={loading}
               >
                 <div className="flex items-center gap-2">
                   <Terminal size={14} className="flex-shrink-0 text-emerald-500 group-hover:animate-pulse" />
@@ -158,9 +264,13 @@ function Chat() {
         {/* Settings */}
         {sidebarOpen && (
           <div className="border-t border-emerald-900/30 p-4 relative z-10">
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100 transition-all font-mono">
-              <Settings size={16} />
-              settings
+            <button 
+              onClick={checkAPIConnection}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100 transition-all font-mono disabled:opacity-50"
+              disabled={isConnecting}
+            >
+              <Settings size={16} className={isConnecting ? 'animate-spin' : ''} />
+              {isConnecting ? 'checking...' : 'settings'}
             </button>
           </div>
         )}
@@ -191,10 +301,40 @@ function Chat() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50"></div>
-            <span className="text-sm font-mono text-emerald-400">status: online</span>
+            {isConnecting ? (
+              <>
+                <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg shadow-yellow-500/50"></div>
+                <span className="text-sm font-mono text-yellow-400">connecting...</span>
+              </>
+            ) : apiError ? (
+              <>
+                <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg shadow-red-500/50"></div>
+                <span className="text-sm font-mono text-red-400">offline</span>
+              </>
+            ) : (
+              <>
+                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50"></div>
+                <span className="text-sm font-mono text-emerald-400">status: online</span>
+              </>
+            )}
           </div>
         </div>
+
+        {/* ERROR BANNER */}
+        {apiError && (
+          <div className="bg-red-950/50 border-b border-red-900/50 px-6 py-3 flex items-start gap-3 relative z-20">
+            <AlertCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-mono text-red-300">{apiError}</p>
+            </div>
+            <button
+              onClick={checkAPIConnection}
+              className="text-xs font-mono text-red-400 hover:text-red-300 px-3 py-1 border border-red-600 rounded hover:bg-red-900/30 transition-all"
+            >
+              {isConnecting ? 'connecting...' : 'retry'}
+            </button>
+          </div>
+        )}
 
         {/* MESSAGES AREA */}
         <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6 scroll-smooth relative z-10">
@@ -221,46 +361,49 @@ function Chat() {
 
                   {/* Status Info */}
                   <div className="space-y-2 text-xs font-mono text-emerald-500 mb-6 border-l-2 border-emerald-600 pl-4">
-                    <div>$ system status: ready</div>
-                    <div>$ connection: established</div>
-                    <div>$ api: awaiting integration</div>
+                    <div>$ system status: {isConnecting ? '⏳ connecting' : apiError ? '❌ offline' : '✅ ready'}</div>
+                    <div>$ connection: {isConnecting ? '⏳ establishing...' : apiError ? '❌ failed' : '✅ established'}</div>
+                    <div>$ api: {isConnecting ? '⏳ checking...' : apiError ? '❌ unavailable' : '✅ connected'}</div>
                   </div>
                 </div>
               </div>
 
               {/* Query Suggestion Boxes */}
-              <div className="max-w-2xl w-full">
-                <p className="text-emerald-600 font-mono text-xs mb-4 ml-2">// Suggested Queries</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {suggestedQueries.map((query, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleSuggestedQuery(query)}
-                      className="group bg-gradient-to-br from-emerald-900/30 to-emerald-950/50 border border-emerald-900/50 hover:border-emerald-700/50 rounded-lg p-4 transition-all hover:shadow-lg hover:shadow-emerald-500/20 hover:bg-emerald-900/40 text-left relative overflow-hidden"
-                      style={{
-                        animation: `slideInUp 0.5s ease-out ${idx * 0.1}s both`
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/0 to-emerald-500/0 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                      
-                      <div className="flex items-start gap-3 relative z-10">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-900/50 border border-emerald-700 flex items-center justify-center flex-shrink-0 text-emerald-400 group-hover:scale-110 transition-transform">
-                          {query.icon}
+              {!apiError && (
+                <div className="max-w-2xl w-full">
+                  <p className="text-emerald-600 font-mono text-xs mb-4 ml-2">// Suggested Queries</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {suggestedQueries.map((query, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSuggestedQuery(query)}
+                        disabled={loading || apiError}
+                        className="group bg-gradient-to-br from-emerald-900/30 to-emerald-950/50 border border-emerald-900/50 hover:border-emerald-700/50 rounded-lg p-4 transition-all hover:shadow-lg hover:shadow-emerald-500/20 hover:bg-emerald-900/40 text-left relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          animation: `slideInUp 0.5s ease-out ${idx * 0.1}s both`
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/0 to-emerald-500/0 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                        
+                        <div className="flex items-start gap-3 relative z-10">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-900/50 border border-emerald-700 flex items-center justify-center flex-shrink-0 text-emerald-400 group-hover:scale-110 transition-transform">
+                            {query.icon}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-emerald-300 font-mono font-semibold text-sm mb-1">
+                              {query.title}
+                            </h3>
+                            <p className="text-emerald-600 font-mono text-xs leading-relaxed">
+                              {query.description}
+                            </p>
+                          </div>
+                          <ArrowRight size={16} className="text-emerald-600 group-hover:translate-x-1 transition-transform mt-1" />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="text-emerald-300 font-mono font-semibold text-sm mb-1">
-                            {query.title}
-                          </h3>
-                          <p className="text-emerald-600 font-mono text-xs leading-relaxed">
-                            {query.description}
-                          </p>
-                        </div>
-                        <ArrowRight size={16} className="text-emerald-600 group-hover:translate-x-1 transition-transform mt-1" />
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -273,8 +416,12 @@ function Chat() {
                 animation: `slideInMessage 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.05}s both`
               }}
             >
-              {msg.type === 'bot' && (
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/50 group-hover:shadow-emerald-400/70 transition-all group-hover:scale-110">
+              {msg.type !== 'user' && (
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg transition-all group-hover:scale-110 ${
+                  msg.type === 'loading'
+                    ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/50 animate-pulse'
+                    : 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-emerald-500/50 group-hover:shadow-emerald-400/70'
+                }`}>
                   <Terminal className="text-white" size={18} />
                 </div>
               )}
@@ -283,11 +430,14 @@ function Chat() {
                 <div className={`${
                   msg.type === 'user'
                     ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-lg rounded-tr-sm shadow-lg shadow-emerald-500/30'
+                    : msg.type === 'loading'
+                    ? 'bg-yellow-950/50 border border-yellow-900/50 text-yellow-100 rounded-lg rounded-tl-sm'
                     : 'bg-emerald-950/50 border border-emerald-900/50 text-emerald-100 rounded-lg rounded-tl-sm'
                 } px-5 py-3 transition-all group-hover/msg:shadow-xl relative overflow-hidden font-mono text-sm`}>
                   
                   <p className="leading-relaxed">
                     {msg.type === 'bot' && '> '}
+                    {msg.type === 'loading' && '⏳ '}
                     {msg.content}
                   </p>
                   
@@ -308,7 +458,7 @@ function Chat() {
                 
                 <div className={`text-xs mt-2 font-mono ${
                   msg.type === 'user' ? 'text-right' : 'text-left'
-                } text-emerald-700`}>
+                } ${msg.type === 'loading' ? 'text-yellow-700' : 'text-emerald-700'}`}>
                   {formatTime(msg.timestamp)}
                 </div>
               </div>
@@ -320,20 +470,6 @@ function Chat() {
               )}
             </div>
           ))}
-
-          {loading && (
-            <div className="flex gap-4 justify-start" style={{ animation: 'slideInMessage 0.4s ease-out' }}>
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/50 animate-pulse">
-                <Terminal className="text-white" size={18} />
-              </div>
-              <div className="bg-emerald-950/50 border border-emerald-900/50 rounded-lg rounded-tl-sm px-5 py-3 shadow-md font-mono text-sm text-emerald-300">
-                <div className="flex gap-2 items-center">
-                  <Loader size={14} className="animate-spin text-emerald-400" />
-                  <span>$ processing...</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div ref={messagesEndRef} />
         </div>
@@ -350,13 +486,14 @@ function Chat() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your query here..."
-                  className="w-full pl-8 pr-5 py-3 bg-emerald-950/50 border border-emerald-900/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder-emerald-700 text-emerald-100 font-mono text-sm"
+                  placeholder={apiError ? "Backend offline... Check server" : "Type your query here..."}
+                  disabled={loading || apiError}
+                  className="w-full pl-8 pr-5 py-3 bg-emerald-950/50 border border-emerald-900/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder-emerald-700 text-emerald-100 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={loading || !input.trim() || apiError}
                 className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-600 disabled:to-slate-600 text-white rounded-lg font-mono font-semibold flex items-center gap-2 transition-all hover:shadow-lg hover:shadow-emerald-500/40 active:scale-95 disabled:cursor-not-allowed relative overflow-hidden group/btn"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover/btn:opacity-20 group-hover/btn:animate-shimmer"></div>
@@ -367,8 +504,14 @@ function Chat() {
                 )}
               </button>
             </form>
-            <p className="text-xs text-emerald-700 text-center mt-3 font-mono">
-              $ Connected to Dev AI | Type /help for commands
+            <p className={`text-xs text-center mt-3 font-mono ${
+              apiError ? 'text-red-600' : 'text-emerald-700'
+            }`}>
+              {apiError 
+                ? '❌ Waiting for backend connection...' 
+                : loading 
+                ? '⏳ Processing your request...'
+                : '$ Ready to chat | Type /help for commands'}
             </p>
           </div>
         </div>
