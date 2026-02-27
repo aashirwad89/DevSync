@@ -384,7 +384,7 @@ function Dashboard() {
           onClick={() => navigate('/chat')}
           className={`relative w-14 h-14 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-full shadow-lg shadow-emerald-500/50 flex items-center justify-center cursor-pointer group-hover:scale-110 transition-transform duration-300 animate-bounce`}
         >
-          <span className="text-white text-2xl">💬</span>
+          <span className="text-white text-2xl">AI  </span>
         </button>
 
         {/* Tooltip */}

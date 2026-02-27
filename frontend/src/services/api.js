@@ -1,10 +1,11 @@
 /* eslint-disable no-unused-vars */
 import axios from 'axios'
 
-// Get API URL from environment or use default
-const API_BASE_URL = 'http://localhost:8000/api'
+// ============= API CONFIGURATION =============
+// ✅ API Base URL - DevSync backend ka URL
+const API_BASE_URL = 'http://localhost:8000'
 
-// Create axios instance with configuration
+// ✅ Create axios instance with configuration
 const API = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds timeout
@@ -13,14 +14,16 @@ const API = axios.create({
   }
 })
 
-// Track retry attempts
+// ============= RETRY CONFIGURATION =============
 let retryCount = 0
 const MAX_RETRIES = 3
 
 // ============= REQUEST INTERCEPTOR =============
+/**
+ * ✅ Log incoming requests
+ */
 API.interceptors.request.use(
   (config) => {
-    // Log request (optional)
     console.log(`📤 Request: ${config.method.toUpperCase()} ${config.url}`)
     return config
   },
@@ -31,26 +34,29 @@ API.interceptors.request.use(
 )
 
 // ============= RESPONSE INTERCEPTOR =============
+/**
+ * ✅ Handle responses and errors
+ */
 API.interceptors.response.use(
   (response) => {
     console.log(`📥 Response: ${response.status} ${response.statusText}`)
-    retryCount = 0 // Reset retry count on success
+    retryCount = 0
     return response
   },
   (error) => {
-    // Handle different error types
+    // ✅ Handle timeout
     if (error.code === 'ECONNABORTED') {
       console.error('⏱️ Request Timeout')
       return Promise.reject(new Error('Request timeout. Server is taking too long to respond.'))
     }
 
+    // ✅ Handle network errors (no response from server)
     if (!error.response) {
-      // Network error
       console.error('🌐 Network Error:', error.message)
       
       if (error.code === 'ECONNREFUSED') {
         return Promise.reject(new Error(
-          `Cannot connect to API server at ${API_BASE_URL}. Please make sure the backend is running.`
+          `Cannot connect to API server at ${API_BASE_URL}. Please make sure the backend is running on port 8000.`
         ))
       }
 
@@ -59,11 +65,19 @@ API.interceptors.response.use(
       ))
     }
 
-    // Server responded with error status
+    // ✅ Handle HTTP errors
     const { status, data } = error.response
 
     if (status === 404) {
       return Promise.reject(new Error(`API endpoint not found: ${error.config.url}`))
+    }
+
+    if (status === 401) {
+      return Promise.reject(new Error(`Unauthorized (401): Invalid API credentials. Check your .env file.`))
+    }
+
+    if (status === 403) {
+      return Promise.reject(new Error(`Forbidden (403): Access denied. Check your API key or permissions.`))
     }
 
     if (status === 500 || status === 502 || status === 503) {
@@ -78,27 +92,19 @@ API.interceptors.response.use(
       ))
     }
 
-    if (status === 401) {
-      return Promise.reject(new Error('Unauthorized: Authentication required'))
-    }
-
-    if (status === 403) {
-      return Promise.reject(new Error('Forbidden: You do not have permission'))
-    }
-
     return Promise.reject(error)
   }
 )
 
 // ============= SEND MESSAGE =============
 /**
- * Send a message to the AI and get response
- * @param {string} message - The user message
- * @returns {Promise} Response from server
+ * ✅ Send a message to Gemini AI and get response
+ * @param {string} message - User ka message
+ * @returns {Promise} Gemini ka response
  */
 export const sendMessage = async (message) => {
   try {
-    // Validate input
+    // ✅ Validation
     if (!message || typeof message !== 'string') {
       throw new Error('Message must be a non-empty string')
     }
@@ -113,11 +119,11 @@ export const sendMessage = async (message) => {
 
     console.log('📨 Sending message:', message.substring(0, 50) + '...')
 
+    // ✅ POST request to /chat endpoint
     const response = await API.post('/chat', {
       message: message.trim()
     })
 
-    // Validate response structure
     if (!response.data) {
       throw new Error('Empty response from server')
     }
@@ -133,7 +139,7 @@ export const sendMessage = async (message) => {
 
 // ============= GET CHAT HISTORY =============
 /**
- * Get chat history from server
+ * ✅ Get chat history from server
  * @returns {Promise} Array of chat messages
  */
 export const getChatHistory = async () => {
@@ -157,7 +163,7 @@ export const getChatHistory = async () => {
 
 // ============= CLEAR CHAT =============
 /**
- * Clear chat history on server
+ * ✅ Clear chat history on server
  * @returns {Promise} Clear confirmation
  */
 export const clearChat = async () => {
@@ -181,15 +187,15 @@ export const clearChat = async () => {
 
 // ============= CHECK API CONNECTION =============
 /**
- * Check if API server is alive
+ * ✅ Check if backend server is running
  * @returns {Promise<boolean>} True if server is running
  */
 export const checkConnection = async () => {
   try {
     console.log('🔍 Checking API connection...')
 
-    const response = await API.get('/health', {
-      timeout: 5000 // Shorter timeout for health check
+    const response = await API.get('/', {
+      timeout: 5000
     })
 
     console.log('✅ API connection successful')
@@ -203,9 +209,9 @@ export const checkConnection = async () => {
 
 // ============= RETRY WRAPPER =============
 /**
- * Retry a function with exponential backoff
+ * ✅ Retry a function with exponential backoff
  * @param {Function} fn - Function to retry
- * @param {number} maxRetries - Max number of retries
+ * @param {number} maxRetries - Max retries
  * @returns {Promise} Result from function
  */
 const retryWithBackoff = async (fn, maxRetries = MAX_RETRIES) => {
@@ -213,14 +219,15 @@ const retryWithBackoff = async (fn, maxRetries = MAX_RETRIES) => {
     try {
       return await fn()
     } catch (error) {
-      // Don't retry on validation errors
+      // ✅ Don't retry validation errors
       if (error.message.includes('must be') || error.message.includes('cannot')) {
         throw error
       }
 
+      // ✅ Last attempt failed
       if (i === maxRetries - 1) throw error
 
-      // Exponential backoff: 1s, 2s, 4s
+      // ✅ Exponential backoff: 1s, 2s, 4s
       const delay = Math.pow(2, i) * 1000
       console.log(`⏳ Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`)
       await new Promise(resolve => setTimeout(resolve, delay))
@@ -230,107 +237,24 @@ const retryWithBackoff = async (fn, maxRetries = MAX_RETRIES) => {
 
 // ============= SEND MESSAGE WITH RETRY =============
 /**
- * Send message with automatic retry on failure
- * @param {string} message - The user message
+ * ✅ Send message with automatic retry on failure
+ * @param {string} message - User message
  * @returns {Promise} Response from server
  */
 export const sendMessageWithRetry = async (message) => {
   return retryWithBackoff(() => sendMessage(message))
 }
 
-// ============= BATCH REQUEST =============
-/**
- * Send multiple messages and get responses (if API supports it)
- * @param {Array<string>} messages - Array of messages
- * @returns {Promise} Response from server
- */
-export const sendBatch = async (messages) => {
-  try {
-    if (!Array.isArray(messages) || messages.length === 0) {
-      throw new Error('Messages must be a non-empty array')
-    }
-
-    console.log(`📨 Sending ${messages.length} messages...`)
-
-    const response = await API.post('/chat/batch', {
-      messages: messages
-    })
-
-    console.log('✅ Batch sent successfully')
-    return response.data
-
-  } catch (error) {
-    console.error('❌ Error in sendBatch:', error.message)
-    throw error
-  }
-}
-
-// ============= STREAM MESSAGE (if backend supports) =============
-/**
- * Send message and stream response (for real-time streaming)
- * @param {string} message - The user message
- * @param {Function} onChunk - Callback for each chunk received
- * @returns {Promise} Final response
- */
-export const streamMessage = async (message, onChunk) => {
-  try {
-    if (!message || typeof message !== 'string') {
-      throw new Error('Message must be a non-empty string')
-    }
-
-    console.log('📨 Streaming message...')
-
-    const response = await API.post('/chat/stream', 
-      { message: message.trim() },
-      {
-        responseType: 'stream',
-        onDownloadProgress: (event) => {
-          if (onChunk) {
-            onChunk(event.currentTarget.response)
-          }
-        }
-      }
-    )
-
-    console.log('✅ Stream completed successfully')
-    return response.data
-
-  } catch (error) {
-    console.error('❌ Error in streamMessage:', error.message)
-    throw error
-  }
-}
-
-// ============= GET API STATUS =============
-/**
- * Get detailed API server status
- * @returns {Promise} Server status information
- */
-export const getApiStatus = async () => {
-  try {
-    console.log('📊 Fetching API status...')
-
-    const response = await API.get('/status')
-
-    console.log('✅ API status fetched')
-    return response.data
-
-  } catch (error) {
-    console.error('❌ Error getting API status:', error.message)
-    throw error
-  }
-}
-
 // ============= HANDLE ERRORS GRACEFULLY =============
 /**
- * Parse error and return user-friendly message
+ * ✅ Parse error and return user-friendly message
  * @param {Error} error - Error object
  * @returns {string} User-friendly error message
  */
 export const getErrorMessage = (error) => {
   if (!error) return 'Unknown error occurred'
 
-  // Network errors
+  // ✅ Network errors
   if (error.code === 'ECONNREFUSED') {
     return '❌ Cannot connect to backend. Please make sure the server is running on port 8000.'
   }
@@ -339,28 +263,30 @@ export const getErrorMessage = (error) => {
     return '❌ Cannot reach API server. Check your API URL configuration.'
   }
 
+  // ✅ Timeout
   if (error.message.includes('timeout')) {
     return '⏱️ Request timeout. The server is taking too long to respond.'
   }
 
+  // ✅ Network issue
   if (error.message.includes('Network')) {
     return '🌐 Network error. Check your internet connection.'
   }
 
-  // HTTP errors
+  // ✅ HTTP errors
   if (error.response?.status === 404) {
     return '❌ API endpoint not found. Check server configuration.'
+  }
+
+  if (error.response?.status === 401 || error.response?.status === 403) {
+    return '❌ Authentication error. Check your Gemini API key and .env file.'
   }
 
   if (error.response?.status === 500) {
     return '❌ Server error. Check server logs for details.'
   }
 
-  if (error.response?.status === 503) {
-    return '❌ Server is unavailable. Please try again later.'
-  }
-
-  // Validation errors
+  // ✅ Validation errors
   if (error.message.includes('cannot be empty')) {
     return '⚠️ Please enter a message.'
   }
@@ -369,9 +295,9 @@ export const getErrorMessage = (error) => {
     return '⚠️ Message is too long (max 5000 characters).'
   }
 
-  // Default
+  // ✅ Default
   return error.message || 'Something went wrong. Please try again.'
 }
 
-// ============= EXPORT EVERYTHING =============
+// ============= EXPORT =============
 export default API

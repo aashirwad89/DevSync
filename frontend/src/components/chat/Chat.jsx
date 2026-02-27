@@ -1,9 +1,11 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/purity */
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Menu, Plus, MessageCircle, Loader, Copy, Settings, Code, Zap, Terminal, ArrowRight, AlertCircle } from 'lucide-react'
 import { sendMessage } from '../../services/api'
 
 function Chat() {
+  // ============= STATE MANAGEMENT =============
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -14,6 +16,7 @@ function Chat() {
   const [isConnecting, setIsConnecting] = useState(false)
   const messagesEndRef = useRef(null)
 
+  // ============= AUTO SCROLL TO BOTTOM =============
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -22,34 +25,41 @@ function Chat() {
     scrollToBottom()
   }, [messages])
 
-  // Check API connection on mount
+  // ============= CHECK API CONNECTION ON MOUNT =============
   useEffect(() => {
     checkAPIConnection()
   }, [])
 
+  /**
+   * ✅ Check if backend is running
+   * Ye check karta hai ke backend server chalu hai ya nahi
+   */
   const checkAPIConnection = async () => {
     try {
       setIsConnecting(true)
-      const response = await fetch('http://localhost:8000/api', {
+      const response = await fetch('http://localhost:8000/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       })
       
       if (response.ok) {
+        const data = await response.json()
         console.log('✅ API Connected')
+        console.log('Backend Status:', data)
         setApiError('')
       } else {
-        console.log(response)
-        setApiError('Backend not responding. Please check if server is running.')
+        console.log('❌ Response status:', response.status)
+        setApiError('Backend not responding. Please check if server is running on port 8000.')
       }
     } catch (error) {
-      setApiError('Cannot connect to backend. Make sure server is running on port 8000.')
+      setApiError('Cannot connect to backend. Make sure server is running on port 8000. (npm run start)')
       console.error('❌ API Connection Error:', error)
     } finally {
       setIsConnecting(false)
     }
   }
 
+  // ============= SUGGESTED QUERIES =============
   const suggestedQueries = [
     {
       icon: <Code size={18} />,
@@ -77,18 +87,23 @@ function Chat() {
     setInput(query.description)
   }
 
+  // ============= SEND MESSAGE HANDLER =============
+  /**
+   * ✅ Main function - message bhejne aur response lene ke liye
+   */
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!input.trim()) return
 
-    // Check if API is available
-    if (apiError && !apiError.includes('working')) {
-      setApiError('⚠️ Still connecting to backend. Please wait...')
+    // ✅ Check if API is available
+    if (apiError) {
+      setApiError('⚠️ Cannot send message - backend not connected. Please start the backend server.')
       return
     }
 
     setShowEmptyState(false)
 
+    // ✅ Create user message object
     const userMessage = {
       id: messages.length + 1,
       author: 'You',
@@ -104,7 +119,7 @@ function Chat() {
     setApiError('')
 
     try {
-      // Show "working" message immediately
+      // ✅ Show "working" message immediately
       const workingMessage = {
         id: messages.length + 2,
         author: 'System',
@@ -114,7 +129,7 @@ function Chat() {
       }
       setMessages(prev => [...prev, workingMessage])
 
-      // Call API with timeout
+      // ✅ Call API with timeout (30 seconds)
       const response = await Promise.race([
         sendMessage(userInput),
         new Promise((_, reject) =>
@@ -122,12 +137,12 @@ function Chat() {
         )
       ])
 
-      // Remove "working" message and add real response
+      // ✅ Remove "working" message and add real response
       setMessages(prev => {
         const filtered = prev.filter(msg => msg.type !== 'loading')
         const botMessage = {
           id: filtered.length + 1,
-          author: 'AI Assistant',
+          author: 'Dev AI',
           content: response.reply || response.message || '> Response received from server',
           timestamp: new Date(),
           type: 'bot'
@@ -139,25 +154,32 @@ function Chat() {
     } catch (error) {
       console.error('❌ Error:', error)
 
-      // Remove "working" message
+      // ✅ Remove "working" message
       setMessages(prev => prev.filter(msg => msg.type !== 'loading'))
 
       let errorContent = ''
 
-      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network')) {
-        errorContent = '❌ Cannot connect to backend. Please start the server with: npm run dev'
-        setApiError('Backend is not running. Start it with: cd backend && npm run dev')
+      // ✅ Handle different error types
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('ECONNREFUSED')) {
+        errorContent = '❌ Cannot connect to backend server.\n\nStart backend with:\n$ npm run start'
+        setApiError('Backend is not running. Start it with: npm run start')
       } else if (error.message?.includes('timeout')) {
-        errorContent = '❌ Server is taking too long to respond. Please check if backend is running.'
-        setApiError('Backend timeout. Please check server logs.')
+        errorContent = '❌ Request timeout - server is taking too long to respond.\n\nPossible issues:\n• Backend server is not running\n• Server is processing slowly\n• Network connection issue'
+        setApiError('Backend timeout. Check server logs.')
       } else if (error.response?.status === 404) {
-        errorContent = '❌ API endpoint not found. Please check backend routes.'
-        setApiError('API endpoint error. Check backend server.')
+        errorContent = '❌ API endpoint not found (404)\n\nPossible issues:\n• Chat routes not properly mounted\n• Wrong API endpoint\n• Backend configuration issue'
+        setApiError('API endpoint error. Check backend routes.')
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        errorContent = '❌ Authentication error\n\nPossible issues:\n• Invalid Gemini API key\n• Generative Language API not enabled'
+        setApiError('API authentication error. Check your Gemini API key and .env file.')
       } else if (error.response?.status === 500) {
-        errorContent = `❌ Server error: ${error.response?.data?.error || 'Internal server error'}`
+        errorContent = `❌ Server error (500): ${error.response?.data?.error || 'Internal server error'}\n\nCheck backend server logs for details.`
         setApiError('Backend server error. Check server logs.')
+      } else if (error.message?.includes('Network')) {
+        errorContent = '❌ Network error - unable to reach backend server.\n\nMake sure:\n• Backend is running on http://localhost:8000\n• Port 8000 is not blocked\n• Network connection is active'
+        setApiError('Network error. Check backend connection.')
       } else {
-        errorContent = `❌ Error: ${error.response?.data?.error || error.message || 'Unknown error'}`
+        errorContent = `❌ Error: ${error.response?.data?.error || error.message || 'Unknown error occurred'}`
         setApiError(error.message || 'An error occurred')
       }
 
@@ -190,6 +212,7 @@ function Chat() {
     setTimeout(() => setMessageJustCopied(null), 2000)
   }
 
+  // ============= RENDER =============
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-950 via-emerald-950 to-black overflow-hidden">
       {/* ============= SIDEBAR ============= */}
@@ -297,7 +320,7 @@ function Chat() {
               $ Dev AI --help
             </h1>
             <p className="text-sm text-emerald-600 mt-1 font-mono">
-              {'>'} AI-powered coding assistant
+              {'>'} AI-powered coding assistant powered by Gemini
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -325,13 +348,13 @@ function Chat() {
           <div className="bg-red-950/50 border-b border-red-900/50 px-6 py-3 flex items-start gap-3 relative z-20">
             <AlertCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-mono text-red-300">{apiError}</p>
+              <p className="text-sm font-mono text-red-300 whitespace-pre-wrap">{apiError}</p>
             </div>
             <button
               onClick={checkAPIConnection}
-              className="text-xs font-mono text-red-400 hover:text-red-300 px-3 py-1 border border-red-600 rounded hover:bg-red-900/30 transition-all"
+              className="text-xs font-mono text-red-400 hover:text-red-300 px-3 py-1 border border-red-600 rounded hover:bg-red-900/30 transition-all flex-shrink-0"
             >
-              {isConnecting ? 'connecting...' : 'retry'}
+              {isConnecting ? 'checking...' : 'retry'}
             </button>
           </div>
         )}
@@ -354,7 +377,7 @@ function Chat() {
                         Hello, Developer! 👋
                       </h2>
                       <p className="text-emerald-300 font-mono text-sm leading-relaxed">
-                        {">"} I'm your AI coding assistant. Ask me anything about code, debugging, best practices, or optimization. Let's code together! 💚
+                        {">"} I'm your AI coding assistant powered by Google Gemini. Ask me anything about code, debugging, best practices, or optimization. Let's code together! 💚
                       </p>
                     </div>
                   </div>
@@ -362,8 +385,9 @@ function Chat() {
                   {/* Status Info */}
                   <div className="space-y-2 text-xs font-mono text-emerald-500 mb-6 border-l-2 border-emerald-600 pl-4">
                     <div>$ system status: {isConnecting ? '⏳ connecting' : apiError ? '❌ offline' : '✅ ready'}</div>
+                    <div>$ backend url: http://localhost:8000</div>
+                    <div>$ ai model: Google Gemini Pro</div>
                     <div>$ connection: {isConnecting ? '⏳ establishing...' : apiError ? '❌ failed' : '✅ established'}</div>
-                    <div>$ api: {isConnecting ? '⏳ checking...' : apiError ? '❌ unavailable' : '✅ connected'}</div>
                   </div>
                 </div>
               </div>
@@ -433,7 +457,7 @@ function Chat() {
                     : msg.type === 'loading'
                     ? 'bg-yellow-950/50 border border-yellow-900/50 text-yellow-100 rounded-lg rounded-tl-sm'
                     : 'bg-emerald-950/50 border border-emerald-900/50 text-emerald-100 rounded-lg rounded-tl-sm'
-                } px-5 py-3 transition-all group-hover/msg:shadow-xl relative overflow-hidden font-mono text-sm`}>
+                } px-5 py-3 transition-all group-hover/msg:shadow-xl relative overflow-hidden font-mono text-sm whitespace-pre-wrap break-words`}>
                   
                   <p className="leading-relaxed">
                     {msg.type === 'bot' && '> '}
@@ -486,7 +510,7 @@ function Chat() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={apiError ? "Backend offline... Check server" : "Type your query here..."}
+                  placeholder={apiError ? "Backend offline... Start server with: npm run start" : "Type your query here..."}
                   disabled={loading || apiError}
                   className="w-full pl-8 pr-5 py-3 bg-emerald-950/50 border border-emerald-900/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder-emerald-700 text-emerald-100 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
@@ -510,8 +534,8 @@ function Chat() {
               {apiError 
                 ? '❌ Waiting for backend connection...' 
                 : loading 
-                ? '⏳ Processing your request...'
-                : '$ Ready to chat | Type /help for commands'}
+                ? '⏳ Processing your request with Gemini AI...'
+                : '$ Ready to chat | Powered by Google Gemini'}
             </p>
           </div>
         </div>
