@@ -33,8 +33,8 @@ function Issues() {
       setLoading(true);
       try {
         const [issueRes, repoRes] = await Promise.all([
-          fetch(`http://localhost:8000/issue/all`, { headers }),
-          fetch(`http://localhost:8000/repo/user/${userId}`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/issue/all`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/repo/user/${userId}`, { headers }),
         ]);
         const issueData = await issueRes.json();
         const repoData = await repoRes.json();
@@ -59,7 +59,7 @@ function Issues() {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await fetch(`http://localhost:8000/issue/create/${newIssue.repoId}`, {
+      const res = await fetch(`https://devsync-874r.onrender.com/issue/create/${newIssue.repoId}`, {
         method: 'POST', headers,
         body: JSON.stringify({ title: newIssue.title, description: newIssue.description }),
       });
@@ -80,7 +80,7 @@ function Issues() {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await fetch(`http://localhost:8000/issue/update/${editIssue._id}`, {
+      const res = await fetch(`https://devsync-874r.onrender.com/issue/update/${editIssue._id}`, {
         method: 'PUT', headers,
         body: JSON.stringify({ title: editIssue.title, description: editIssue.description, status: editIssue.status }),
       });
@@ -99,7 +99,7 @@ function Issues() {
   const handleDelete = async (issueId) => {
     if (!window.confirm('Delete this issue?')) return;
     try {
-      await fetch(`http://localhost:8000/issue/delete/${issueId}`, { method: 'DELETE', headers });
+      await fetch(`https://devsync-874r.onrender.com/issue/delete/${issueId}`, { method: 'DELETE', headers });
       setIssues((prev) => prev.filter((i) => i._id !== issueId));
     } catch (err) {
       console.log('Error deleting issue', err);
@@ -108,7 +108,7 @@ function Issues() {
 
   const handleStatusChange = async (issueId, status) => {
     try {
-      await fetch(`http://localhost:8000/issue/update/${issueId}`, {
+      await fetch(`https://devsync-874r.onrender.com/issue/update/${issueId}`, {
         method: 'PUT', headers,
         body: JSON.stringify({ status }),
       });

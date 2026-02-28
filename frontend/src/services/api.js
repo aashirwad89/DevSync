@@ -3,7 +3,7 @@ import axios from 'axios'
 
 // ============= API CONFIGURATION =============
 // ✅ API Base URL - DevSync backend ka URL
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'https://devsync-874r.onrender.com'
 
 // ✅ Create axios instance with configuration
 const API = axios.create({

@@ -28,9 +28,9 @@ function Dashboard() {
       setLoading(true);
       try {
         const [myRes, issueRes, userRes] = await Promise.all([
-          fetch(`http://localhost:8000/repo/user/${userId}`, { headers }),
-          fetch(`http://localhost:8000/issue/all`, { headers }),
-          fetch(`http://localhost:8000/userProfile/${userId}`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/repo/user/${userId}`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/issue/all`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/userProfile/${userId}`, { headers }),
         ]);
         const myData = await myRes.json();
         const issueData = await issueRes.json();

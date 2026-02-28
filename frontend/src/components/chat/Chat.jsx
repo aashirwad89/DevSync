@@ -37,7 +37,7 @@ function Chat() {
   const checkAPIConnection = async () => {
     try {
       setIsConnecting(true)
-      const response = await fetch('http://localhost:8000/', {
+      const response = await fetch('https://devsync-874r.onrender.com/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       })
@@ -176,7 +176,7 @@ function Chat() {
         errorContent = `❌ Server error (500): ${error.response?.data?.error || 'Internal server error'}\n\nCheck backend server logs for details.`
         setApiError('Backend server error. Check server logs.')
       } else if (error.message?.includes('Network')) {
-        errorContent = '❌ Network error - unable to reach backend server.\n\nMake sure:\n• Backend is running on http://localhost:8000\n• Port 8000 is not blocked\n• Network connection is active'
+        errorContent = '❌ Network error - unable to reach backend server.\n\nMake sure:\n• Backend is running on https://devsync-874r.onrender.com/n• Port 8000 is not blocked\n• Network connection is active'
         setApiError('Network error. Check backend connection.')
       } else {
         errorContent = `❌ Error: ${error.response?.data?.error || error.message || 'Unknown error occurred'}`

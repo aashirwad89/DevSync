@@ -33,8 +33,8 @@ function Repo() {
       setLoading(true);
       try {
         const [myRes, allRes] = await Promise.all([
-          fetch(`http://localhost:8000/repo/user/${userId}`, { headers }),
-          fetch(`http://localhost:8000/repo/all`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/repo/user/${userId}`, { headers }),
+          fetch(`https://devsync-874r.onrender.com/repo/all`, { headers }),
         ]);
         const myData = await myRes.json();
         const allData = await allRes.json();
@@ -69,7 +69,7 @@ function Repo() {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await fetch('http://localhost:8000/createRepo', {
+      const res = await fetch('https://devsync-874r.onrender.com/createRepo', {
         method: 'POST', headers,
         body: JSON.stringify({ ...newRepo, owner: userId }),
       });
@@ -90,7 +90,7 @@ function Repo() {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await fetch(`http://localhost:8000/repo/update/${editRepo._id}`, {
+      const res = await fetch(`https://devsync-874r.onrender.com/repo/update/${editRepo._id}`, {
         method: 'PUT', headers,
         body: JSON.stringify({ description: editRepo.description }),
       });
@@ -111,7 +111,7 @@ function Repo() {
   const handleDelete = async (repoId) => {
     if (!window.confirm('Delete this repository?')) return;
     try {
-      await fetch(`http://localhost:8000/repo/delete/${repoId}`, { method: 'DELETE', headers });
+      await fetch(`https://devsync-874r.onrender.com/repo/delete/${repoId}`, { method: 'DELETE', headers });
       setRepositories((prev) => prev.filter((r) => r._id !== repoId));
     } catch (err) {
       console.log('Error deleting repo', err);
@@ -120,7 +120,7 @@ function Repo() {
 
   const handleToggle = async (repoId) => {
     try {
-      const res = await fetch(`http://localhost:8000/repo/toggle/${repoId}`, { headers });
+      const res = await fetch(`https://devsync-874r.onrender.com/repo/toggle/${repoId}`, { headers });
       const data = await res.json();
       setRepositories((prev) =>
         prev.map((r) => (r._id === repoId ? { ...r, visiblity: data.repositary?.visiblity } : r))

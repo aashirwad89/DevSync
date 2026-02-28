@@ -56,7 +56,7 @@ function SignUp() {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post("http://localhost:8000/signup", {
+      const response = await axios.post("https://devsync-874r.onrender.com/signup", {
         email: formData.email,
         username: formData.username,
         password: formData.password

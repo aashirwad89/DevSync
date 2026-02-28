@@ -21,8 +21,8 @@ function Profile() {
       setLoading(true);
       try {
         const [userRes, repoRes] = await Promise.all([
-          fetch(`http://localhost:8000/userProfile/${userId}`, { headers }),
-          fetch(`http://localhost:8000/repo/user/${userId}`, { headers }),
+          fetch(`http://https://devsync-874r.onrender.com/userProfile/${userId}`, { headers }),
+          fetch(`http://https://devsync-874r.onrender.com/repo/user/${userId}`, { headers }),
         ]);
         const userData = await userRes.json();
         const repoData = await repoRes.json();
@@ -54,7 +54,7 @@ function Profile() {
     setSaving(true);
     setMessage('');
     try {
-      const response = await fetch(`http://localhost:8000/updateProfile/${userId}`, {
+      const response = await fetch(`https://devsync-874r.onrender.com/updateProfile/${userId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(formData),
@@ -78,7 +78,7 @@ function Profile() {
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
     try {
-      await fetch(`http://localhost:8000/deleteProfile/${userId}`, { method: 'DELETE', headers });
+      await fetch(`https://devsync-874r.onrender.com/deleteProfile/${userId}`, { method: 'DELETE', headers });
       localStorage.clear();
       navigate('/auth');
     } catch (err) {
